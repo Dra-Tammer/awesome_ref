@@ -1,10 +1,23 @@
 import { ref, computed } from 'vue'
 
-const token = ref(localStorage.getItem('auth_token') || '')
-const username = ref(localStorage.getItem('auth_username') || '')
+const token = ref('')
+const username = ref('')
+const logged = ref(false)
+
+// Try to restore session by hitting a protected endpoint
+async function tryRestoreSession() {
+  try {
+    const res = await fetch('/api/groups', { credentials: 'same-origin' })
+    if (res.ok) {
+      logged.value = true
+      return true
+    }
+  } catch { /* server not running */ }
+  return false
+}
 
 export function useAuth() {
-  const isLoggedIn = computed(() => !!token.value)
+  const isLoggedIn = computed(() => logged.value)
 
   function getHeaders() {
     return token.value ? { Authorization: `Bearer ${token.value}` } : {}
@@ -14,6 +27,7 @@ export function useAuth() {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify({ username: user, password }),
     })
     if (!res.ok) {
@@ -23,8 +37,7 @@ export function useAuth() {
     const data = await res.json()
     token.value = data.access_token
     username.value = data.username
-    localStorage.setItem('auth_token', data.access_token)
-    localStorage.setItem('auth_username', data.username)
+    logged.value = true
     return data
   }
 
@@ -32,6 +45,7 @@ export function useAuth() {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify({ username: user, password, confirmPassword }),
     })
     if (!res.ok) {
@@ -41,22 +55,21 @@ export function useAuth() {
     const data = await res.json()
     token.value = data.access_token
     username.value = data.username
-    localStorage.setItem('auth_token', data.access_token)
-    localStorage.setItem('auth_username', data.username)
+    logged.value = true
     return data
   }
 
   function logout() {
     token.value = ''
     username.value = ''
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('auth_username')
+    logged.value = false
   }
 
   async function changePassword(oldPassword, newPassword, confirmPassword) {
     const res = await fetch('/api/auth/change-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getHeaders() },
+      credentials: 'same-origin',
       body: JSON.stringify({ old_password: oldPassword, new_password: newPassword, confirm_password: confirmPassword }),
     })
     if (!res.ok) {
@@ -75,5 +88,6 @@ export function useAuth() {
     register,
     logout,
     changePassword,
+    tryRestoreSession,
   }
 }

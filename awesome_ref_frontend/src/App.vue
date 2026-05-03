@@ -12,7 +12,7 @@ import ReferenceList from './components/ReferenceList.vue'
 import ReferenceDetail from './components/ReferenceDetail.vue'
 import DropOverlay from './components/DropOverlay.vue'
 
-const { isLoggedIn } = useAuth()
+const { isLoggedIn, tryRestoreSession } = useAuth()
 const { loadReferences, loadTrash, addReferences, setNotes, resetAll } = useReferences()
 const { loadNotes, notes, resetNotes } = useNotes()
 const { loadGroups, resetGroups } = useGroups()
@@ -74,7 +74,8 @@ watch(isLoggedIn, async (loggedIn) => {
 })
 
 onMounted(async () => {
-  if (isLoggedIn.value) {
+  const restored = await tryRestoreSession()
+  if (restored) {
     await Promise.all([loadReferences(), loadNotes(), loadGroups(), loadTrash()])
   }
 })

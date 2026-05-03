@@ -49,7 +49,11 @@ async def global_exception_handler(request: Request, exc: Exception):
     traceback.print_exc()
     sys.stdout.flush()
     status_code = getattr(exc, "status_code", 500)
-    detail = getattr(exc, "detail", str(exc))
+    if hasattr(exc, "status_code"):
+        # HTTPException — safe to return its detail
+        detail = getattr(exc, "detail", "Internal server error")
+    else:
+        detail = "Internal server error"
     return JSONResponse(status_code=status_code, content={"detail": detail})
 
 

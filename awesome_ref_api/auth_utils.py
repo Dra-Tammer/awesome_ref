@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session
 
 from models import User
 
-SECRET_KEY = os.getenv("AWESOMEREF_SECRET_KEY", "awesomeref-secret-key-change-in-production")
+SECRET_KEY = os.getenv("AWESOMEREF_SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "AWESOMEREF_SECRET_KEY environment variable is required. "
+        "Copy .env.example to .env and set a secure random value."
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 3  # 3 days
 
