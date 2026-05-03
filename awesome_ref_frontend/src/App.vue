@@ -12,6 +12,7 @@ import ReferenceList from './components/ReferenceList.vue'
 import ReferenceDetail from './components/ReferenceDetail.vue'
 import DropOverlay from './components/DropOverlay.vue'
 
+const checking = ref(true)
 const { isLoggedIn, tryRestoreSession } = useAuth()
 const { loadReferences, loadTrash, addReferences, setNotes, resetAll } = useReferences()
 const { loadNotes, notes, resetNotes } = useNotes()
@@ -78,6 +79,7 @@ onMounted(async () => {
   if (restored) {
     await Promise.all([loadReferences(), loadNotes(), loadGroups(), loadTrash()])
   }
+  checking.value = false
 })
 
 async function handleDropFiles(files) {
@@ -94,7 +96,8 @@ async function handleDropFiles(files) {
 
 <template>
   <Transition name="page" mode="out-in">
-    <LoginPage v-if="!isLoggedIn" key="login" />
+    <div v-if="checking" key="loading" class="app-loading" />
+    <LoginPage v-else-if="!isLoggedIn" key="login" />
 
     <div v-else class="app" key="main">
       <Toolbar :collapsed="collapsed" @toggle-sidebar="toggleCollapse" />

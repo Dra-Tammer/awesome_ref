@@ -1745,6 +1745,12 @@ html, body {
   transform: translateY(-8px);
 }
 
+/* ========== Session Loading ========== */
+.app-loading {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
 /* ========== Responsive ========== */
 @media (max-width: 768px) {
   .toolbar { padding: 0 12px; gap: 8px; }
