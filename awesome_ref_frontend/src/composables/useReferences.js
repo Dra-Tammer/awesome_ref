@@ -60,7 +60,7 @@ export function useReferences() {
   })
 
   function setNotes(notes) { notesRef.value = notes }
-  function setActiveGroup(id) { activeGroupId.value = id; selectedIndex.value = 0 }
+  function setActiveGroup(id) { activeGroupId.value = id; selectedIndex.value = 0; searchQuery.value = '' }
   function toggleSort() { sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc' }
 
   async function loadReferences() {
