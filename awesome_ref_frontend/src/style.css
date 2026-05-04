@@ -43,7 +43,7 @@
   --accent-hover: #8b5cf6;
   --accent-light: rgba(167, 139, 250, 0.12);
   --text: #e4e4ef;
-  --text-secondary: #9ca3b8;
+  --text-secondary: #b8c0cc;
   --border: #3a3a58;
   --tag-bg: #252545;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.35);
@@ -62,12 +62,7 @@
   background: var(--accent-light);
   color: var(--accent);
 }
-[data-theme="dark"] .btn-ref-delete:hover { background: var(--danger-light); color: var(--danger); }
-[data-theme="dark"] .btn-ref-restore:hover { background: var(--success-light); }
-[data-theme="dark"] .btn-ref-permanent-delete:hover { background: var(--danger-light); }
-[data-theme="dark"] .btn-restore { background: var(--success-light); color: var(--success); }
 [data-theme="dark"] .btn-restore:hover { background: rgba(52, 211, 153, 0.18); }
-[data-theme="dark"] .btn-permanent-delete { background: var(--danger-light); color: var(--danger); }
 [data-theme="dark"] .btn-permanent-delete:hover { background: rgba(248, 113, 113, 0.18); }
 [data-theme="dark"] .detail-delete:hover,
 [data-theme="dark"] .btn-detail-delete:hover {
@@ -1115,11 +1110,11 @@ html, body {
   background: transparent;
 }
 .btn-ref-delete { color: var(--text-secondary); }
-.btn-ref-delete:hover { background: #fee2e2; color: #dc2626; }
-.btn-ref-restore { color: #059669; }
-.btn-ref-restore:hover { background: #d1fae5; }
-.btn-ref-permanent-delete { color: #dc2626; }
-.btn-ref-permanent-delete:hover { background: #fee2e2; }
+.btn-ref-delete:hover { background: var(--danger-light); color: var(--danger); }
+.btn-ref-restore { color: var(--success); }
+.btn-ref-restore:hover { background: var(--success-light); }
+.btn-ref-permanent-delete { color: var(--danger); }
+.btn-ref-permanent-delete:hover { background: var(--danger-light); }
 .trash-hint { font-size: 11px; color: var(--text-secondary); font-style: italic; }
 
 /* detail header right-side actions group */
@@ -1250,13 +1245,13 @@ html, body {
   transition: all 0.15s;
 }
 .btn-restore {
-  background: #d1fae5;
-  color: #059669;
+  background: var(--success-light);
+  color: var(--success);
 }
 .btn-restore:hover { background: #a7f3d0; }
 .btn-permanent-delete {
-  background: #fee2e2;
-  color: #dc2626;
+  background: var(--danger-light);
+  color: var(--danger);
 }
 .btn-permanent-delete:hover { background: #fecaca; }
 
