@@ -88,6 +88,11 @@ function onPdfClick() {
   }
 }
 
+function onPdfDownload() {
+  if (!selectedReference.value) return
+  window.open(`/api/references/${encodeURIComponent(selectedReference.value.id)}/pdf?download=1`, '_blank')
+}
+
 function triggerPdfUpload() {
   const input = document.createElement('input')
   input.type = 'file'
@@ -155,6 +160,11 @@ async function onPdfDelete() {
                     </svg>
                   </button>
                   <div v-if="selectedReference.pdfFilename" class="pdf-actions-dropdown">
+                    <button class="pdf-action-item" @click="onPdfDownload" title="下载 PDF">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                    </button>
                     <button class="pdf-action-item" @click="onPdfReplace" title="替换 PDF">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>

@@ -277,14 +277,16 @@ async def upload_pdf(ref_key: str, file: UploadFile, user: User = Depends(get_cu
 
 
 @router.get("/references/{ref_key}/pdf")
-def get_pdf(ref_key: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_pdf(ref_key: str, download: bool = False, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     ref = db.query(Reference).filter(Reference.user_id == user.id, Reference.ref_key == ref_key, Reference.deleted_at.is_(None)).first()
     if not ref or not ref.pdf_filename:
         raise HTTPException(status_code=404, detail="PDF 不存在")
     path = _pdf_path(ref.pdf_filename)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="PDF 文件不存在")
-    return FileResponse(path, media_type="application/pdf", filename=ref.pdf_filename)
+    if download:
+        return FileResponse(path, media_type="application/pdf", filename=ref.pdf_filename)
+    return FileResponse(path, media_type="application/pdf", filename=ref.pdf_filename, content_disposition_type="inline")
 
 
 @router.delete("/references/{ref_key}/pdf")
