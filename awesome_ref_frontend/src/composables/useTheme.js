@@ -10,15 +10,15 @@ export function useTheme() {
     const next = theme.value === 'light' ? 'dark' : 'light'
     const el = document.documentElement
     el.classList.add('theme-transitioning')
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        theme.value = next
-        setTimeout(() => {
-          el.classList.remove('theme-transitioning')
-          transitioning = false
-        }, 550)
-      })
-    })
+    // Force synchronous style recalculation so the browser computes
+    // transition properties before CSS variables change. Without this,
+    // batched style invalidation can skip the transition entirely.
+    void el.offsetHeight
+    theme.value = next
+    setTimeout(() => {
+      el.classList.remove('theme-transitioning')
+      transitioning = false
+    }, 550)
   }
 
   watch(theme, (val) => {

@@ -76,11 +76,11 @@ const emit = defineEmits(['confirm', 'cancel'])
   background: var(--border);
 }
 .btn-confirm-ok {
-  background: #e74c3c;
+  background: var(--danger);
   color: #fff;
 }
 .btn-confirm-ok:hover {
-  background: #d63031;
+  background: #dc2626;
 }
 .confirm-enter-active,
 .confirm-leave-active {
