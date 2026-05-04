@@ -13,15 +13,16 @@ Backend service for AwesomeRef, a literature reference management tool. Built wi
 
 ```
 awesome_ref_api/
-├── main.py           # App entry point, middleware, router registration
+├── main.py           # App entry point, middleware, router registration, auto-migration
 ├── database.py       # SQLAlchemy engine, session factory, Base
 ├── models.py         # ORM models: User, Reference, Note, Group
 ├── auth_utils.py     # Password hashing, JWT encode/decode, user init
 ├── deps.py           # FastAPI dependencies (get_current_user)
 ├── init_db.py        # Database initialization helper
+├── pdf_data/         # User-uploaded PDF files (gitignore *.pdf)
 └── routers/
     ├── auth.py       # POST /login, /register, /change-password
-    ├── references.py # CRUD, trash, restore, group assignment
+    ├── references.py # CRUD, trash, restore, group assignment, PDF upload
     ├── notes.py      # CRUD for per-reference notes
     ├── groups.py     # Create, rename, delete groups
     └── export.py     # GET /export, POST /import (full data backup)
@@ -59,6 +60,9 @@ awesome_ref_api/
 | DELETE | `/references/trash` | Empty trash |
 | POST | `/references/{ref_key}/groups/{group_key}` | Add reference to group |
 | DELETE | `/references/{ref_key}/groups/{group_key}` | Remove reference from group |
+| POST | `/references/{ref_key}/pdf` | Upload PDF for a reference |
+| GET | `/references/{ref_key}/pdf` | Download/view linked PDF |
+| DELETE | `/references/{ref_key}/pdf` | Remove linked PDF |
 
 ### Notes (`/api`)
 

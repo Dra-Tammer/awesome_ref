@@ -6,7 +6,10 @@ AwesomeRef helps researchers and students organize academic references, take not
 
 ## Features
 
+- **Manual Creation** — Create references manually with a full-featured form (title, authors, journal, DOI, abstract, keywords, etc.)
+- **BibTeX Parsing** — Paste BibTeX entries and parse them into editable form fields with one click
 - **RIS Import** — Import references directly from `.ris` files exported by Zotero, EndNote, and other reference managers
+- **PDF Linking** — Upload PDF files linked to each reference; open in a new browser tab with one click
 - **Reference Management** — Full CRUD with support for title, authors, journal, DOI, abstract, keywords, and more
 - **Grouping** — Organize references into custom groups; ungrouped references are automatically collected
 - **Notes** — Attach rich-text notes to each reference for reading summaries and annotations
@@ -35,18 +38,19 @@ awesome_ref/
 │   ├── models.py             # ORM models: User, Reference, Note, Group
 │   ├── auth_utils.py         # Password hashing, JWT creation & verification
 │   ├── deps.py               # Dependency injection (current user)
+│   ├── pdf_data/             # User-uploaded PDF files (gitignored)
 │   └── routers/
 │       ├── auth.py           # Login, register, change password
-│       ├── references.py     # Reference CRUD, trash, group assignment
+│       ├── references.py     # Reference CRUD, trash, group assignment, PDF
 │       ├── notes.py          # Notes CRUD
 │       ├── groups.py         # Group management
 │       └── export.py         # Data export & import
 ├── awesome_ref_frontend/     # Frontend (Vue 3 + Vite)
 │   ├── src/
 │   │   ├── App.vue
-│   │   ├── components/       # UI components
-│   │   ├── composables/      # Vue composables (auth, theme, etc.)
-│   │   └── utils/            # RIS parser, highlight utility
+│   │   ├── components/       # UI components (Toolbar, ReferenceEditor, etc.)
+│   │   ├── composables/      # Vue composables (auth, references, etc.)
+│   │   └── utils/            # RIS parser, BibTeX parser, highlight utility
 │   └── dist/                 # Production build (served by FastAPI)
 └── .gitignore
 ```
@@ -119,8 +123,10 @@ The dev server runs at `http://localhost:5173`. In production, FastAPI serves th
 | `/api/references` | POST | Import references (RIS parsed) |
 | `/api/references/{ref_key}` | DELETE | Soft-delete a reference |
 | `/api/references/{ref_key}/restore` | POST | Restore from trash |
-| `/api/references/trash` | GET | List trash |
-| `/api/references/{ref_key}/groups/{group_key}` | POST | Add reference to group |
+| `/api/references/{ref_key}/permanent` | DELETE | Permanently delete a reference |
+| `/api/references/{ref_key}/pdf` | GET / POST / DELETE | Upload, open, or remove linked PDF |
+| `/api/references/trash` | GET / DELETE | List or empty trash |
+| `/api/references/{ref_key}/groups/{group_key}` | POST / DELETE | Add or remove reference from group |
 | `/api/groups` | GET / POST | List or create groups |
 | `/api/notes` | GET / POST | List or save notes |
 | `/api/export` | GET | Export all data as JSON |
