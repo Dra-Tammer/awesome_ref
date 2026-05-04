@@ -31,5 +31,8 @@ Thumbs.db
 # App data (contains user credentials)
 awesome_ref_api/data/
 
+# User uploaded PDFs
+awesome_ref_api/pdf_data/
+
 # Claude
 .claude/

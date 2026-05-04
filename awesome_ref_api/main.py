@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from pathlib import Path
 
+from sqlalchemy import text
 from database import engine, SessionLocal, Base
 from models import User, Reference, Note, Group
 from auth_utils import init_default_user
@@ -59,6 +60,16 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
+
+# 自动迁移：添加缺失的列
+with engine.begin() as conn:
+    result = conn.execute(text(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ref' AND COLUMN_NAME = 'pdf_filename'"
+    ))
+    if result.scalar() == 0:
+        conn.execute(text("ALTER TABLE ref ADD COLUMN pdf_filename VARCHAR(255) DEFAULT NULL"))
+        print("[migrate] 已添加 ref.pdf_filename 列")
 
 # 初始化默认用户
 db = SessionLocal()

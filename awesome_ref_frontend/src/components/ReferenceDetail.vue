@@ -8,7 +8,7 @@ import { highlightText } from '../utils/highlight.js'
 import NoteEditor from './NoteEditor.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 
-const { selectedReference, addRefToGroup, removeRefFromGroup, searchQuery, isTrashMode, softDeleteRef, restoreRef, permanentDeleteRef } = useReferences()
+const { selectedReference, addRefToGroup, removeRefFromGroup, searchQuery, isTrashMode, softDeleteRef, restoreRef, permanentDeleteRef, uploadPdf, deletePdf } = useReferences()
 const { groups } = useGroups()
 const { showToast } = useToast()
 
@@ -78,6 +78,41 @@ async function onRestore() {
   const ok = await restoreRef(selectedReference.value?.id)
   if (ok) showToast('文献已恢复')
 }
+
+function onPdfClick() {
+  if (!selectedReference.value) return
+  if (selectedReference.value.pdfFilename) {
+    window.open(`/api/references/${encodeURIComponent(selectedReference.value.id)}/pdf`, '_blank')
+  } else {
+    triggerPdfUpload()
+  }
+}
+
+function triggerPdfUpload() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.pdf'
+  input.onchange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    try {
+      await uploadPdf(selectedReference.value.id, file)
+      showToast('PDF 上传成功')
+    } catch (e) {
+      showToast('PDF 上传失败: ' + e.message, 'error')
+    }
+  }
+  input.click()
+}
+
+function onPdfReplace() {
+  triggerPdfUpload()
+}
+
+async function onPdfDelete() {
+  const ok = await deletePdf(selectedReference.value.id)
+  if (ok) showToast('PDF 已移除')
+}
 </script>
 
 <template>
@@ -104,13 +139,40 @@ async function onRestore() {
         <div class="detail-header-top">
           <div class="detail-header-row">
             <span class="detail-type" :title="selectedReference.journal || getRISTypeLabel(selectedReference.type)">{{ selectedReference.journal || getRISTypeLabel(selectedReference.type) }}</span>
-            <!-- 正常模式：删除按钮 -->
+            <!-- 正常模式：PDF链接 + 删除按钮 -->
             <template v-if="!isTrashMode">
-              <button class="btn-detail-delete" @click="onDeleteClick" title="移入回收站">
+              <div class="detail-actions">
+                <div class="detail-pdf-group">
+                  <button
+                    class="btn-detail-pdf"
+                    :class="{ linked: selectedReference.pdfFilename }"
+                    @click="onPdfClick"
+                    :title="selectedReference.pdfFilename ? '打开 PDF' : '上传 PDF'"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                    </svg>
+                  </button>
+                  <div v-if="selectedReference.pdfFilename" class="pdf-actions-dropdown">
+                    <button class="pdf-action-item" @click="onPdfReplace" title="替换 PDF">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                      </svg>
+                    </button>
+                    <button class="pdf-action-item danger" @click="onPdfDelete" title="移除 PDF">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <button class="btn-detail-delete" @click="onDeleteClick" title="移入回收站">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                 </svg>
               </button>
+              </div>
             </template>
             <!-- 回收站模式：恢复+永久删除 -->
             <template v-else>

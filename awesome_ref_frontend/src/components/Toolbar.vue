@@ -6,6 +6,7 @@ import { useNotes } from '../composables/useNotes.js'
 import { useAuth } from '../composables/useAuth.js'
 import { useTheme } from '../composables/useTheme.js'
 import { useToast } from '../composables/useToast.js'
+import ReferenceEditor from './ReferenceEditor.vue'
 
 const props = defineProps({
   collapsed: Boolean,
@@ -31,6 +32,7 @@ const pwdError = ref('')
 const pwdLoading = ref(false)
 
 const showImportModal = ref(false)
+const showNewRefModal = ref(false)
 
 function onLogout() {
   showMenu.value = false
@@ -91,8 +93,9 @@ async function onExport() {
     a.download = `awesomeref-export-${date}.json`
     a.click()
     URL.revokeObjectURL(url)
+    showToast('导出成功')
   } catch (e) {
-    alert('导出失败: ' + e.message)
+    showToast('导出失败: ' + e.message, 'error')
   }
 }
 
@@ -191,6 +194,12 @@ defineExpose({ handleFiles })
       </h1>
     </div>
     <div class="toolbar-right">
+      <button class="btn-new-ref" @click="showNewRefModal = true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        新建
+      </button>
       <button class="btn-upload" @click="openImportModal">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -212,28 +221,30 @@ defineExpose({ handleFiles })
             <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
           </svg>
         </button>
-        <div v-if="showMenu" class="dropdown-menu">
-          <button class="dropdown-item" @click="onExport">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            导出数据
-          </button>
-          <div class="dropdown-divider"></div>
-          <button class="dropdown-item" @click="openPwdModal">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            修改密码
-          </button>
-          <div class="dropdown-divider"></div>
-          <button class="dropdown-item" @click="onLogout">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-            退出登录
-          </button>
-        </div>
+        <Transition name="dropdown">
+          <div v-if="showMenu" class="dropdown-menu">
+            <button class="dropdown-item" @click="onExport">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              导出数据
+            </button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item" @click="openPwdModal">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              修改密码
+            </button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item danger" @click="onLogout">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              退出登录
+            </button>
+          </div>
+        </Transition>
       </div>
     </div>
   </header>
@@ -308,6 +319,9 @@ defineExpose({ handleFiles })
       </div>
     </Transition>
   </Teleport>
+
+  <!-- 新建文献弹框 -->
+  <ReferenceEditor v-if="showNewRefModal" @close="showNewRefModal = false" />
 
   <!-- Toast 提示 -->
   <Teleport to="body">

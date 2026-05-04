@@ -1,7 +1,9 @@
 import json
 import hashlib
+import os
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -10,6 +12,22 @@ from models import Reference, Note, User, Group
 from deps import get_current_user
 
 router = APIRouter()
+
+PDF_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "pdf_data")
+
+def _ensure_pdf_dir():
+    os.makedirs(PDF_DIR, exist_ok=True)
+
+def _sanitize_filename(name: str) -> str:
+    """移除文件名中的非法字符"""
+    invalid = '<>:"/\\|?*'
+    for ch in invalid:
+        name = name.replace(ch, '')
+    name = name.strip().strip('.')
+    return name or 'untitled'
+
+def _pdf_path(filename: str) -> str:
+    return os.path.join(PDF_DIR, filename)
 
 
 def _make_ref_key(title: str) -> str:
@@ -70,6 +88,10 @@ def clear_trash(user: User = Depends(get_current_user), db: Session = Depends(ge
     ).all()
     for ref in trashed:
         db.query(Note).filter(Note.user_id == user.id, Note.ref_key == ref.ref_key).delete()
+        if ref.pdf_filename:
+            path = _pdf_path(ref.pdf_filename)
+            if os.path.exists(path):
+                os.remove(path)
         db.delete(ref)
     db.commit()
     return {"success": True, "count": len(trashed)}
@@ -216,7 +238,65 @@ def permanent_delete_reference(ref_key: str, user: User = Depends(get_current_us
     if ref.deleted_at is None:
         raise HTTPException(status_code=400, detail="请先将文献移入回收站")
     db.query(Note).filter(Note.user_id == user.id, Note.ref_key == ref_key).delete()
+    # 删除关联的PDF文件
+    if ref.pdf_filename:
+        path = _pdf_path(ref.pdf_filename)
+        if os.path.exists(path):
+            os.remove(path)
     db.delete(ref)
+    db.commit()
+    return {"success": True}
+
+
+# ── PDF 管理 ──
+
+@router.post("/references/{ref_key}/pdf")
+async def upload_pdf(ref_key: str, file: UploadFile, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    ref = db.query(Reference).filter(Reference.user_id == user.id, Reference.ref_key == ref_key, Reference.deleted_at.is_(None)).first()
+    if not ref:
+        raise HTTPException(status_code=404, detail="文献不存在")
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="仅支持 PDF 文件")
+    _ensure_pdf_dir()
+    content = await file.read()
+    if len(content) > 50 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="PDF 文件大小不能超过 50MB")
+    # 删除旧文件
+    if ref.pdf_filename:
+        old_path = _pdf_path(ref.pdf_filename)
+        if os.path.exists(old_path):
+            os.remove(old_path)
+    # 以文献标题命名存储
+    new_filename = _sanitize_filename(ref.title) + ".pdf"
+    path = _pdf_path(new_filename)
+    with open(path, "wb") as f:
+        f.write(content)
+    ref.pdf_filename = new_filename
+    db.commit()
+    return {"success": True, "filename": new_filename}
+
+
+@router.get("/references/{ref_key}/pdf")
+def get_pdf(ref_key: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    ref = db.query(Reference).filter(Reference.user_id == user.id, Reference.ref_key == ref_key, Reference.deleted_at.is_(None)).first()
+    if not ref or not ref.pdf_filename:
+        raise HTTPException(status_code=404, detail="PDF 不存在")
+    path = _pdf_path(ref.pdf_filename)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="PDF 文件不存在")
+    return FileResponse(path, media_type="application/pdf", filename=ref.pdf_filename)
+
+
+@router.delete("/references/{ref_key}/pdf")
+def delete_pdf(ref_key: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    ref = db.query(Reference).filter(Reference.user_id == user.id, Reference.ref_key == ref_key, Reference.deleted_at.is_(None)).first()
+    if not ref:
+        raise HTTPException(status_code=404, detail="文献不存在")
+    if ref.pdf_filename:
+        path = _pdf_path(ref.pdf_filename)
+        if os.path.exists(path):
+            os.remove(path)
+    ref.pdf_filename = None
     db.commit()
     return {"success": True}
 
@@ -237,4 +317,5 @@ def _to_dict(r: Reference) -> dict:
         "keywords": json.loads(r.keywords_json) if r.keywords_json else [],
         "groupIds": [g.group_key for g in r.groups],
         "deletedAt": r.deleted_at.isoformat() if r.deleted_at else None,
+        "pdfFilename": r.pdf_filename,
     }

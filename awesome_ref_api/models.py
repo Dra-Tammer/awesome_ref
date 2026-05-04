@@ -59,6 +59,7 @@ class Reference(Base):
     abstract = Column(Text, default="")
     doi = Column(Text, default="")
     keywords_json = Column(Text, default="[]")
+    pdf_filename = Column(String(255), nullable=True, default=None)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     deleted_at = Column(DateTime, nullable=True, default=None, index=True)
 

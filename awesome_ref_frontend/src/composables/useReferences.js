@@ -203,6 +203,44 @@ export function useReferences() {
     } catch (err) { console.error('Failed to remove ref from group:', err) }
   }
 
+  async function uploadPdf(refKey, file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const res = await fetch(`/api/references/${encodeURIComponent(refKey)}/pdf`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: formData,
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const ref = references.value.find(r => r.id === refKey)
+        if (ref) ref.pdfFilename = data.filename
+        return true
+      }
+      const err = await res.json()
+      throw new Error(err.detail || '上传失败')
+    } catch (e) {
+      console.error('Failed to upload PDF:', e)
+      throw e
+    }
+  }
+
+  async function deletePdf(refKey) {
+    try {
+      const res = await fetch(`/api/references/${encodeURIComponent(refKey)}/pdf`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+      })
+      if (res.ok) {
+        const ref = references.value.find(r => r.id === refKey)
+        if (ref) ref.pdfFilename = null
+        return true
+      }
+    } catch (e) { console.error('Failed to delete PDF:', e) }
+    return false
+  }
+
   function selectByIndex(index) { selectedIndex.value = index }
   function selectById(id) {
     const idx = filteredReferences.value.findIndex(r => r.id === id)
@@ -227,6 +265,7 @@ export function useReferences() {
     loadReferences, loadTrash, addReferences,
     softDeleteRef, restoreRef, permanentDeleteRef, clearTrash,
     addRefToGroup, removeRefFromGroup,
+    uploadPdf, deletePdf,
     selectByIndex, selectById, resetAll,
   }
 }
