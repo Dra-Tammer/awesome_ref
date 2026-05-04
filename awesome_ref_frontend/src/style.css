@@ -4,16 +4,17 @@
   box-sizing: border-box;
 }
 
+/* Uniformly override ALL element transitions during theme switch */
 .theme-transitioning,
 .theme-transitioning *,
 .theme-transitioning *::before,
 .theme-transitioning *::after {
-  transition: background-color 0.5s cubic-bezier(0.4, 0, 0.1, 1),
-              color 0.4s cubic-bezier(0.4, 0, 0.1, 1),
-              border-color 0.5s cubic-bezier(0.4, 0, 0.1, 1),
-              box-shadow 0.5s cubic-bezier(0.4, 0, 0.1, 1),
-              fill 0.4s cubic-bezier(0.4, 0, 0.1, 1),
-              stroke 0.4s cubic-bezier(0.4, 0, 0.1, 1) !important;
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              fill 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              stroke 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 :root {
@@ -1997,6 +1998,20 @@ html, body {
 .app-loading {
   min-height: 100vh;
   background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.loading-spinner svg {
+  animation: spin 1s linear infinite;
 }
 
 /* ========== New Reference Button ========== */
