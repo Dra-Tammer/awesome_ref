@@ -104,9 +104,9 @@ async function onConfirmClearTrash() {
             <span class="ref-card-authors" v-html="highlightText(getAuthorDisplay(ref.authors), searchQuery)"></span>
             <span v-if="ref.year" class="ref-card-year">{{ ref.year }}</span>
             <span v-if="ref.journal" class="ref-card-journal">{{ ref.journal }}</span>
-            <span v-if="hasNote(ref.id)" class="ref-card-note-badge" title="有笔记"></span>
           </div>
         </div>
+        <span v-if="hasNote(ref.id)" class="ref-card-note-badge" title="有笔记"></span>
       </div>
     </template>
   </div>
