@@ -33,7 +33,7 @@ function parseAuthors(raw) {
 
 function parseKeywords(raw) {
   if (!raw) return []
-  return raw.split(/[,;]\s*/).map(k => stripBraces(k.trim())).filter(Boolean)
+  return [...new Set(raw.split(/[,;]\s*/).map(k => stripBraces(k.trim())).filter(Boolean))]
 }
 
 export function parseBibTeX(text) {

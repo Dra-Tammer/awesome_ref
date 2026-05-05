@@ -52,6 +52,7 @@ export function parseRIS(text) {
       };
     } else if (tag === 'ER') {
       if (current) {
+        current.keywords = [...new Set(current.keywords)];
         const { _lastKey, ...clean } = current;
         refs.push(clean);
         current = null;
