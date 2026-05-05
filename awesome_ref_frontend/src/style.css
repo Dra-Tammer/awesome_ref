@@ -644,12 +644,44 @@ html, body {
 .group-panel {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  max-height: 50%;
   overflow-y: auto;
 }
 
 .group-panel::-webkit-scrollbar { width: 3px; }
 .group-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.group-resize-handle {
+  height: 8px;
+  cursor: row-resize;
+  flex-shrink: 0;
+  position: relative;
+  transition: background 0.15s;
+  margin-top: -2px;
+}
+
+.group-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  transition: background 0.15s, width 0.15s;
+}
+
+.group-resize-handle:hover::after,
+.group-resize-handle.active::after {
+  background: var(--accent);
+  width: 48px;
+}
+
+.group-panel.resizing,
+.group-panel.resizing * {
+  user-select: none;
+}
 
 .group-header {
   display: flex;

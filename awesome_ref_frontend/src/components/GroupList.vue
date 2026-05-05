@@ -1,9 +1,14 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useGroups } from '../composables/useGroups.js'
 import { useReferences } from '../composables/useReferences.js'
 import { useToast } from '../composables/useToast.js'
 import ConfirmDialog from './ConfirmDialog.vue'
+
+const STORAGE_KEY = 'groupPanelHeight'
+const MIN_HEIGHT = 72
+const MAX_HEIGHT = 400
+const DEFAULT_HEIGHT = 200
 
 const { groups, addGroup, deleteGroup, renameGroup } = useGroups()
 const { activeGroupId, setActiveGroup, references, trashCount, loadTrash } = useReferences()
@@ -14,6 +19,56 @@ const newName = ref('')
 const editingId = ref(null)
 const editName = ref('')
 const confirmState = ref({ visible: false, groupId: null })
+
+const panelHeight = ref(DEFAULT_HEIGHT)
+const resizing = ref(false)
+let rafId = null
+
+function loadHeight() {
+  const saved = localStorage.getItem(STORAGE_KEY)
+  if (saved) {
+    const n = parseInt(saved, 10)
+    if (n >= MIN_HEIGHT && n <= MAX_HEIGHT) panelHeight.value = n
+  }
+}
+
+onMounted(loadHeight)
+
+function onDragStart(e) {
+  e.preventDefault()
+  const handle = e.currentTarget
+  handle.setPointerCapture(e.pointerId)
+  resizing.value = true
+  document.body.style.userSelect = 'none'
+  document.body.style.cursor = 'row-resize'
+  const startY = e.clientY
+  const startH = panelHeight.value
+  let lastDelta = 0
+
+  function onMove(ev) {
+    lastDelta = ev.clientY - startY
+    if (!rafId) {
+      rafId = requestAnimationFrame(() => {
+        panelHeight.value = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, startH + lastDelta))
+        rafId = null
+      })
+    }
+  }
+
+  function onUp() {
+    handle.releasePointerCapture(e.pointerId)
+    resizing.value = false
+    document.body.style.userSelect = ''
+    document.body.style.cursor = ''
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null }
+    localStorage.setItem(STORAGE_KEY, panelHeight.value)
+    handle.removeEventListener('pointermove', onMove)
+    handle.removeEventListener('pointerup', onUp)
+  }
+
+  handle.addEventListener('pointermove', onMove)
+  handle.addEventListener('pointerup', onUp)
+}
 
 function onCreate() {
   if (!newName.value.trim()) return
@@ -80,7 +135,7 @@ async function onOpenTrash() {
 </script>
 
 <template>
-  <div class="group-panel">
+  <div class="group-panel" :style="{ maxHeight: panelHeight + 'px' }" :class="{ resizing }">
     <div class="group-header">
       <span class="group-title">分组</span>
       <button class="btn-add-group" @click="showForm = !showForm" title="新建分组">
@@ -181,6 +236,12 @@ async function onOpenTrash() {
       </template>
     </div>
   </div>
+
+  <div
+    class="group-resize-handle"
+    :class="{ active: resizing }"
+    @pointerdown="onDragStart"
+  ></div>
 
   <ConfirmDialog
     :visible="confirmState.visible"
