@@ -1,49 +1,370 @@
-import json
-import hashlib
+import os
 import time as _time
 from datetime import datetime, timezone
+from io import BytesIO
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from models import Reference, Note, User, Group
 from deps import get_current_user
+from routers.references import _to_dict, _make_ref_key, _apply_fields
 
 router = APIRouter()
 
+# ---------------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------------
 
-def _ref_to_export(r: Reference) -> dict:
-    return {
-        "id": r.ref_key,
-        "type": r.ref_type,
-        "title": r.title,
-        "authors": json.loads(r.authors_json) if r.authors_json else [],
-        "year": r.year,
-        "journal": r.journal,
-        "volume": r.volume,
-        "issue": r.issue,
-        "pages": r.pages,
-        "abstract": r.abstract,
-        "doi": r.doi,
-        "keywords": json.loads(r.keywords_json) if r.keywords_json else [],
-        "groupIds": [g.group_key for g in r.groups],
-    }
+def _group_refs(groups: list[dict], references: list[dict]) -> list[dict]:
+    """Organise references under their groups. Returns ordered group dicts."""
+    group_map = {g["id"]: {**g, "refs": []} for g in groups}
+    ungrouped_key = None
+    for g in groups:
+        if g.get("name") == "未分组" or g.get("id") == "ungrouped":
+            ungrouped_key = g["id"]
+    for ref in references:
+        placed = False
+        for gid in ref.get("groupIds", []):
+            if gid in group_map:
+                group_map[gid]["refs"].append(ref)
+                placed = True
+        if not placed and ungrouped_key and ungrouped_key in group_map:
+            group_map[ungrouped_key]["refs"].append(ref)
+    return list(group_map.values())
 
+
+def _find_cjk_font() -> str | None:
+    """Return path to an available CJK-capable TrueType font or None."""
+    candidates = [
+        "C:/Windows/Fonts/msyh.ttc",
+        "C:/Windows/Fonts/msyh.ttf",
+        "C:/Windows/Fonts/simsun.ttc",
+        "C:/Windows/Fonts/simhei.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+        "/System/Library/Fonts/PingFang.ttc",
+        "/System/Library/Fonts/STHeiti Light.ttc",
+    ]
+    for p in candidates:
+        if os.path.isfile(p):
+            return p
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Markdown generator
+# ---------------------------------------------------------------------------
+
+def _build_markdown(groups: list[dict], references: list[dict],
+                    notes: dict, exported_at: str) -> str:
+    grouped = _group_refs(groups, references)
+    lines: list[str] = []
+    lines.append("# AwesomeRef 导出数据")
+    lines.append("")
+    lines.append(f"**导出时间**: {exported_at}")
+    lines.append(f"**文献数**: {len(references)}　**分组数**: {len(groups)}")
+    lines.append("")
+
+    for g in grouped:
+        lines.append(f"## {g['name']}")
+        lines.append("")
+        if not g["refs"]:
+            lines.append("*(空分组)*")
+            lines.append("")
+            continue
+        for i, ref in enumerate(g["refs"], 1):
+            authors = "; ".join(ref.get("authors") or [])
+            title = ref.get("title") or "无标题"
+            lines.append(f"### {i}. {title}")
+            lines.append("")
+            if authors:
+                lines.append(f"- **作者**: {authors}")
+            if ref.get("year"):
+                lines.append(f"- **年份**: {ref['year']}")
+            if ref.get("type"):
+                lines.append(f"- **类型**: {ref['type']}")
+            if ref.get("journal"):
+                lines.append(f"- **期刊**: {ref['journal']}")
+            if ref.get("volume"):
+                lines.append(f"- **卷**: {ref['volume']}")
+            if ref.get("issue"):
+                lines.append(f"- **期**: {ref['issue']}")
+            if ref.get("pages"):
+                lines.append(f"- **页码**: {ref['pages']}")
+            if ref.get("doi"):
+                lines.append(f"- **DOI**: [{ref['doi']}](https://doi.org/{ref['doi']})")
+            if ref.get("keywords"):
+                lines.append(f"- **关键词**: {', '.join(ref['keywords'])}")
+            lines.append("")
+            if ref.get("abstract"):
+                lines.append(f"**摘要**: {ref['abstract']}")
+                lines.append("")
+            ref_key = ref.get("id", "")
+            if ref_key in notes and notes[ref_key].get("content"):
+                lines.append(f"**笔记**: {notes[ref_key]['content']}")
+                lines.append("")
+            lines.append("---")
+            lines.append("")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# PDF generator (fpdf2)
+# ---------------------------------------------------------------------------
+
+def _build_pdf(groups: list[dict], references: list[dict],
+               notes: dict, exported_at: str) -> BytesIO:
+    from fpdf import FPDF
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_left_margin(12)
+    pdf.set_right_margin(12)
+    w = pdf.epw  # effective page width
+    left_margin = pdf.l_margin
+
+    cjk_path = _find_cjk_font()
+    if cjk_path:
+        pdf.add_font("cjk", "", cjk_path, uni=True)
+        pdf.add_font("cjk", "B", cjk_path, uni=True)
+        body_font = "cjk"
+    else:
+        body_font = "Helvetica"
+
+    # ── header ──
+    pdf.add_page()
+    pdf.set_font(body_font, "B", 18)
+    pdf.cell(w, 12, "AwesomeRef Export", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.set_font(body_font, "", 9)
+    pdf.cell(w, 6, f"Export time: {exported_at}", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.cell(w, 6, f"References: {len(references)}    Groups: {len(groups)}",
+             new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.ln(6)
+
+    grouped = _group_refs(groups, references)
+
+    for g in grouped:
+        # ── group heading ──
+        pdf.set_font(body_font, "B", 13)
+        pdf.cell(w, 8, g["name"], new_x="LMARGIN", new_y="NEXT")
+        y = pdf.get_y()
+        pdf.set_draw_color(180)
+        pdf.line(left_margin, y + 1, left_margin + w, y + 1)
+        pdf.set_draw_color(0)
+        pdf.ln(5)
+
+        if not g["refs"]:
+            pdf.set_font(body_font, "", 9)
+            pdf.cell(w, 6, "(empty)", new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(4)
+            continue
+
+        for i, ref in enumerate(g["refs"], 1):
+            # Check if we need a page break before this reference
+            # (keep at least 25mm of space for the first few lines)
+            if pdf.y > pdf.h - 30:
+                pdf.add_page()
+
+            # ── reference title ──
+            title = ref.get("title") or "Untitled"
+            pdf.set_font(body_font, "B", 10.5)
+            pdf.multi_cell(w, 5.5, f"{i}. {title}", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font(body_font, "", 9)
+
+            # ── metadata block (label: value on same line) ──
+            lines = []
+            authors = "; ".join(ref.get("authors") or [])
+            if authors:
+                lines.append(("Authors:", authors))
+
+            meta = []
+            if ref.get("year"):
+                meta.append(ref["year"])
+            if ref.get("journal"):
+                meta.append(ref["journal"])
+            if ref.get("volume"):
+                meta.append(f"Vol.{ref['volume']}")
+            if ref.get("issue"):
+                meta.append(f"No.{ref['issue']}")
+            if ref.get("pages"):
+                meta.append(f"pp.{ref['pages']}")
+            if meta:
+                lines.append(("Source:", "  ".join(meta)))
+
+            if ref.get("doi"):
+                lines.append(("DOI:", ref["doi"]))
+            if ref.get("keywords"):
+                lines.append(("Keywords:", ", ".join(ref["keywords"])))
+
+            for label, value in lines:
+                pdf.set_font(body_font, "B", 9)
+                label_w = pdf.get_string_width(label + " ")
+                pdf.cell(label_w, 5, label + " ")
+                pdf.set_font(body_font, "", 9)
+                pdf.multi_cell(w - label_w, 5, value, new_x="LMARGIN", new_y="NEXT")
+
+            # ── abstract ──
+            if ref.get("abstract"):
+                pdf.ln(1.5)
+                pdf.set_font(body_font, "B", 8.5)
+                pdf.cell(w, 4.5, "Abstract:", new_x="LMARGIN", new_y="NEXT")
+                pdf.set_font(body_font, "", 8.5)
+                pdf.multi_cell(w, 4.5, ref["abstract"], new_x="LMARGIN", new_y="NEXT")
+
+            # ── note ──
+            ref_key = ref.get("id", "")
+            if ref_key in notes and notes[ref_key].get("content"):
+                pdf.ln(1.5)
+                pdf.set_font(body_font, "B", 8.5)
+                pdf.cell(w, 4.5, "Notes:", new_x="LMARGIN", new_y="NEXT")
+                pdf.set_font(body_font, "", 8.5)
+                pdf.multi_cell(w, 4.5, notes[ref_key]["content"],
+                               new_x="LMARGIN", new_y="NEXT")
+
+            # ── separator between references ──
+            pdf.ln(2.5)
+            y = pdf.get_y()
+            pdf.set_draw_color(210)
+            pdf.line(left_margin, y, left_margin + w, y)
+            pdf.set_draw_color(0)
+            pdf.ln(3)
+
+    buf = BytesIO()
+    pdf.output(buf)
+    buf.seek(0)
+    return buf
+
+
+# ---------------------------------------------------------------------------
+# Word / docx generator (python-docx)
+# ---------------------------------------------------------------------------
+
+def _build_docx(groups: list[dict], references: list[dict],
+                notes: dict, exported_at: str) -> BytesIO:
+    from docx import Document
+    from docx.shared import Pt, Inches
+
+    doc = Document()
+    style = doc.styles["Normal"]
+    style.font.size = Pt(10.5)
+
+    doc.add_heading("AwesomeRef Export", level=0)
+    doc.add_paragraph(f"Export time: {exported_at}")
+    doc.add_paragraph(f"References: {len(references)}    Groups: {len(groups)}")
+
+    grouped = _group_refs(groups, references)
+    for g in grouped:
+        doc.add_heading(g["name"], level=1)
+        if not g["refs"]:
+            doc.add_paragraph("(empty)")
+            continue
+        for i, ref in enumerate(g["refs"], 1):
+            doc.add_heading(f"{i}. {ref.get('title') or 'Untitled'}", level=2)
+            authors = "; ".join(ref.get("authors") or [])
+            if authors:
+                doc.add_paragraph("Authors: ", style="List Bullet").add_run(authors)
+            parts = []
+            if ref.get("year"):
+                parts.append(("Year", ref["year"]))
+            if ref.get("type"):
+                parts.append(("Type", ref["type"]))
+            if ref.get("journal"):
+                parts.append(("Journal", ref["journal"]))
+            if ref.get("volume"):
+                parts.append(("Volume", ref["volume"]))
+            if ref.get("issue"):
+                parts.append(("Issue", ref["issue"]))
+            if ref.get("pages"):
+                parts.append(("Pages", ref["pages"]))
+            for label, val in parts:
+                doc.add_paragraph(f"{label}: {val}", style="List Bullet")
+            if ref.get("doi"):
+                doc.add_paragraph(f"DOI: {ref['doi']}", style="List Bullet")
+            if ref.get("keywords"):
+                doc.add_paragraph("Keywords: ", style="List Bullet").add_run(
+                    ", ".join(ref["keywords"]))
+            if ref.get("abstract"):
+                doc.add_paragraph("Abstract", style="List Bullet")
+                doc.add_paragraph(ref["abstract"])
+            ref_key = ref.get("id", "")
+            if ref_key in notes and notes[ref_key].get("content"):
+                p = doc.add_paragraph("Notes: ", style="List Bullet")
+                p.add_run(notes[ref_key]["content"])
+            doc.add_paragraph("─" * 40)
+
+    buf = BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    return buf
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
 
 @router.get("/export")
-def export_data(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    groups = db.query(Group).filter(Group.user_id == user.id).all()
-    references = db.query(Reference).filter(Reference.user_id == user.id, Reference.deleted_at.is_(None)).all()
-    notes = db.query(Note).filter(Note.user_id == user.id).all()
+def export_data(
+    fmt: str = Query("json", alias="format"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    groups = [{"id": g.group_key, "name": g.name}
+              for g in db.query(Group).filter(Group.user_id == user.id).all()]
+    references = [
+        _to_dict(r)
+        for r in db.query(Reference)
+                    .options(joinedload(Reference.groups))
+                    .filter(Reference.user_id == user.id,
+                            Reference.deleted_at.is_(None))
+                    .all()
+    ]
+    notes = {n.ref_key: {"content": n.content}
+             for n in db.query(Note).filter(Note.user_id == user.id).all()}
 
+    exported_at = datetime.now(timezone.utc).isoformat()
+
+    if fmt == "md":
+        md_text = _build_markdown(groups, references, notes, exported_at)
+        return Response(
+            content=md_text.encode("utf-8"),
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition":
+                     f"attachment; filename=awesomeref-export-{exported_at[:10]}.md"},
+        )
+
+    if fmt == "pdf":
+        buf = _build_pdf(groups, references, notes, exported_at)
+        return Response(
+            content=buf.getvalue(),
+            media_type="application/pdf",
+            headers={"Content-Disposition":
+                     f"attachment; filename=awesomeref-export-{exported_at[:10]}.pdf"},
+        )
+
+    if fmt == "docx":
+        buf = _build_docx(groups, references, notes, exported_at)
+        return Response(
+            content=buf.getvalue(),
+            media_type="application/"
+                        "vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition":
+                     f"attachment; filename=awesomeref-export-{exported_at[:10]}.docx"},
+        )
+
+    # Default: json
     return {
         "export_version": "1.0",
-        "exported_at": datetime.now(timezone.utc).isoformat(),
-        "groups": [{"id": g.group_key, "name": g.name} for g in groups],
-        "references": [_ref_to_export(r) for r in references],
-        "notes": {n.ref_key: {"content": n.content} for n in notes},
+        "exported_at": exported_at,
+        "groups": groups,
+        "references": references,
+        "notes": notes,
     }
 
 
@@ -89,54 +410,20 @@ def import_data(data: ImportData, user: User = Depends(get_current_user), db: Se
 
     for item in data.references:
         title = (item.get("title") or "").strip()
-        t = title.lower() if title else "untitled"
-        ref_key = hashlib.md5(t.encode()).hexdigest()[:16]
+        ref_key = _make_ref_key(title)
 
         ref = existing_refs.get(ref_key)
         trashed_ref = trashed_refs.get(ref_key) if not ref else None
 
         if ref:
-            ref.ref_type = item.get("type", "")
-            ref.title = title
-            ref.authors_json = json.dumps(item.get("authors", []), ensure_ascii=False)
-            ref.year = item.get("year", "")
-            ref.journal = item.get("journal", "")
-            ref.volume = item.get("volume", "")
-            ref.issue = item.get("issue", "")
-            ref.pages = item.get("pages", "")
-            ref.abstract = item.get("abstract", "")
-            ref.doi = item.get("doi", "")
-            ref.keywords_json = json.dumps(item.get("keywords", []), ensure_ascii=False)
+            _apply_fields(ref, item)
         elif trashed_ref:
             trashed_ref.deleted_at = None
-            trashed_ref.ref_type = item.get("type", "")
-            trashed_ref.title = title
-            trashed_ref.authors_json = json.dumps(item.get("authors", []), ensure_ascii=False)
-            trashed_ref.year = item.get("year", "")
-            trashed_ref.journal = item.get("journal", "")
-            trashed_ref.volume = item.get("volume", "")
-            trashed_ref.issue = item.get("issue", "")
-            trashed_ref.pages = item.get("pages", "")
-            trashed_ref.abstract = item.get("abstract", "")
-            trashed_ref.doi = item.get("doi", "")
-            trashed_ref.keywords_json = json.dumps(item.get("keywords", []), ensure_ascii=False)
+            _apply_fields(trashed_ref, item)
             ref = trashed_ref
         else:
-            ref = Reference(
-                user_id=user.id,
-                ref_key=ref_key,
-                ref_type=item.get("type", ""),
-                title=title,
-                authors_json=json.dumps(item.get("authors", []), ensure_ascii=False),
-                year=item.get("year", ""),
-                journal=item.get("journal", ""),
-                volume=item.get("volume", ""),
-                issue=item.get("issue", ""),
-                pages=item.get("pages", ""),
-                abstract=item.get("abstract", ""),
-                doi=item.get("doi", ""),
-                keywords_json=json.dumps(item.get("keywords", []), ensure_ascii=False),
-            )
+            ref = Reference(user_id=user.id, ref_key=ref_key)
+            _apply_fields(ref, item)
             db.add(ref)
             db.flush()
 

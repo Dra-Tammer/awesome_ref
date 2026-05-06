@@ -32,6 +32,7 @@ const pwdError = ref('')
 const pwdLoading = ref(false)
 
 const showImportModal = ref(false)
+const showExportModal = ref(false)
 const showNewRefModal = ref(false)
 
 function onLogout() {
@@ -79,18 +80,26 @@ async function onPwdSubmit() {
   }
 }
 
-async function onExport() {
+function openExportModal() {
   showMenu.value = false
+  showExportModal.value = true
+}
+
+function closeExportModal() {
+  showExportModal.value = false
+}
+
+async function doExport(format, ext, mime) {
+  showExportModal.value = false
   try {
-    const res = await fetch('/api/export', { headers: getHeaders() })
+    const res = await fetch(`/api/export?format=${format}`, { headers: getHeaders() })
     if (!res.ok) throw new Error('导出失败')
-    const data = await res.json()
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     const date = new Date().toISOString().slice(0, 10)
     a.href = url
-    a.download = `awesomeref-export-${date}.json`
+    a.download = `awesomeref-export-${date}.${ext}`
     a.click()
     URL.revokeObjectURL(url)
     showToast('导出成功')
@@ -98,6 +107,11 @@ async function onExport() {
     showToast('导出失败: ' + e.message, 'error')
   }
 }
+
+function onExportJSON() { doExport('json', 'json', 'application/json') }
+function onExportMD()   { doExport('md', 'md', 'text/markdown') }
+function onExportPDF()  { doExport('pdf', 'pdf', 'application/pdf') }
+function onExportDOCX() { doExport('docx', 'docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') }
 
 function openImportModal() {
   showImportModal.value = true
@@ -223,7 +237,7 @@ defineExpose({ handleFiles })
         </button>
         <Transition name="dropdown">
           <div v-if="showMenu" class="dropdown-menu">
-            <button class="dropdown-item" @click="onExport">
+            <button class="dropdown-item" @click="openExportModal">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
@@ -312,6 +326,58 @@ defineExpose({ handleFiles })
               <div class="import-option-text">
                 <span class="import-option-title">JSON 备份文件</span>
                 <span class="import-option-desc">导入包含分组、文献和笔记的完整备份</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- 导出格式选择弹框 -->
+  <Teleport to="body">
+    <Transition name="modal">
+      <div v-if="showExportModal" class="pwd-modal-overlay" @click.self="closeExportModal">
+        <div class="pwd-modal import-modal">
+          <div class="pwd-modal-header">
+            <span>选择导出格式</span>
+            <button class="pwd-modal-close" @click="closeExportModal">&times;</button>
+          </div>
+          <div class="import-modal-body">
+            <button class="import-option" @click="onExportJSON">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15v-2h2a1 1 0 1 0 0-2H9"/>
+              </svg>
+              <div class="import-option-text">
+                <span class="import-option-title">JSON</span>
+                <span class="import-option-desc">导出完整备份，可用于数据恢复或迁移</span>
+              </div>
+            </button>
+            <button class="import-option" @click="onExportMD">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><polyline points="12 11 16 13 12 15"/>
+              </svg>
+              <div class="import-option-text">
+                <span class="import-option-title">Markdown</span>
+                <span class="import-option-desc">可读性强，支持版本管理，方便在编辑器中查看</span>
+              </div>
+            </button>
+            <button class="import-option" @click="onExportPDF">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              <div class="import-option-text">
+                <span class="import-option-title">PDF</span>
+                <span class="import-option-desc">排版固定，适合打印和分享</span>
+              </div>
+            </button>
+            <button class="import-option" @click="onExportDOCX">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><rect x="8" y="12" width="8" height="6" rx="1"/>
+              </svg>
+              <div class="import-option-text">
+                <span class="import-option-title">Word (DOCX)</span>
+                <span class="import-option-desc">可编辑文档，适合进一步排版和批注</span>
               </div>
             </button>
           </div>
