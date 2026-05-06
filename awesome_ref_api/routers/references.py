@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Reference, Note, User, Group
 from deps import get_current_user
+from sqlalchemy.orm import joinedload
 
 router = APIRouter()
 
@@ -38,6 +39,20 @@ def _make_ref_key(title: str) -> str:
     return hashlib.md5(t.encode()).hexdigest()[:16]
 
 
+def _apply_fields(ref: Reference, item: dict):
+    ref.ref_type = item.get("type", "")
+    ref.title = (item.get("title") or "").strip()
+    ref.authors_json = json.dumps(item.get("authors", []), ensure_ascii=False)
+    ref.year = item.get("year", "")
+    ref.journal = item.get("journal", "")
+    ref.volume = item.get("volume", "")
+    ref.issue = item.get("issue", "")
+    ref.pages = item.get("pages", "")
+    ref.abstract = item.get("abstract", "")
+    ref.doi = item.get("doi", "")
+    ref.keywords_json = json.dumps(item.get("keywords", []), ensure_ascii=False)
+
+
 class ReferenceItem(BaseModel):
     title: str = ""
     type: str = ""
@@ -54,7 +69,7 @@ class ReferenceItem(BaseModel):
 
 @router.get("/references")
 def get_references(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    rows = db.query(Reference).filter(Reference.user_id == user.id, Reference.deleted_at.is_(None)).all()
+    rows = db.query(Reference).options(joinedload(Reference.groups)).filter(Reference.user_id == user.id, Reference.deleted_at.is_(None)).all()
     return [_to_dict(r) for r in rows]
 
 
@@ -75,7 +90,7 @@ def _purge_old_trash(db: Session, user_id: int):
 @router.get("/references/trash")
 def get_trash(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     _purge_old_trash(db, user.id)
-    rows = db.query(Reference).filter(
+    rows = db.query(Reference).options(joinedload(Reference.groups)).filter(
         Reference.user_id == user.id, Reference.deleted_at.isnot(None)
     ).all()
     return [_to_dict(r) for r in rows]
@@ -120,49 +135,13 @@ def save_references(items: list[ReferenceItem], user: User = Depends(get_current
         trashed_ref = trashed.get(ref_key) if not ref else None
 
         if ref:
-            # 更新文献信息，保留原有分组关系和笔记
-            ref.ref_type = item.get("type", "")
-            ref.title = title
-            ref.authors_json = json.dumps(item.get("authors", []), ensure_ascii=False)
-            ref.year = item.get("year", "")
-            ref.journal = item.get("journal", "")
-            ref.volume = item.get("volume", "")
-            ref.issue = item.get("issue", "")
-            ref.pages = item.get("pages", "")
-            ref.abstract = item.get("abstract", "")
-            ref.doi = item.get("doi", "")
-            ref.keywords_json = json.dumps(item.get("keywords", []), ensure_ascii=False)
+            _apply_fields(ref, item)
         elif trashed_ref:
-            # 从回收站恢复并更新
             trashed_ref.deleted_at = None
-            trashed_ref.ref_type = item.get("type", "")
-            trashed_ref.title = title
-            trashed_ref.authors_json = json.dumps(item.get("authors", []), ensure_ascii=False)
-            trashed_ref.year = item.get("year", "")
-            trashed_ref.journal = item.get("journal", "")
-            trashed_ref.volume = item.get("volume", "")
-            trashed_ref.issue = item.get("issue", "")
-            trashed_ref.pages = item.get("pages", "")
-            trashed_ref.abstract = item.get("abstract", "")
-            trashed_ref.doi = item.get("doi", "")
-            trashed_ref.keywords_json = json.dumps(item.get("keywords", []), ensure_ascii=False)
+            _apply_fields(trashed_ref, item)
         else:
-            # 新文献，加入"未分组"
-            ref = Reference(
-                user_id=user.id,
-                ref_key=ref_key,
-                ref_type=item.get("type", ""),
-                title=title,
-                authors_json=json.dumps(item.get("authors", []), ensure_ascii=False),
-                year=item.get("year", ""),
-                journal=item.get("journal", ""),
-                volume=item.get("volume", ""),
-                issue=item.get("issue", ""),
-                pages=item.get("pages", ""),
-                abstract=item.get("abstract", ""),
-                doi=item.get("doi", ""),
-                keywords_json=json.dumps(item.get("keywords", []), ensure_ascii=False),
-            )
+            ref = Reference(user_id=user.id, ref_key=ref_key)
+            _apply_fields(ref, item)
             ref.groups.append(ungrouped)
             db.add(ref)
 
@@ -261,6 +240,8 @@ async def upload_pdf(ref_key: str, file: UploadFile, user: User = Depends(get_cu
     content = await file.read()
     if len(content) > 50 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="PDF 文件大小不能超过 50MB")
+    if not content.startswith(b"%PDF"):
+        raise HTTPException(status_code=400, detail="文件不是有效的 PDF 格式")
     # 删除旧文件
     if ref.pdf_filename:
         old_path = _pdf_path(ref.pdf_filename)

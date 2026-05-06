@@ -1,12 +1,15 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useNotes } from '../composables/useNotes.js'
+import { useReferences } from '../composables/useReferences.js'
+import { highlightText } from '../utils/highlight.js'
 
 const props = defineProps({
   refId: { type: String, required: true },
 })
 
 const { getNote, saveNote } = useNotes()
+const { searchQuery } = useReferences()
 
 const content = ref('')
 const editing = ref(false)
@@ -75,7 +78,7 @@ const hasContent = computed(() => !!content.value.trim())
         </button>
       </div>
     </div>
-    <div v-if="hasContent" class="note-card-text">{{ content }}</div>
+    <div v-if="hasContent" class="note-card-text" v-html="highlightText(content, searchQuery)"></div>
     <div v-else class="note-card-placeholder">点击编辑添加笔记...</div>
   </div>
 

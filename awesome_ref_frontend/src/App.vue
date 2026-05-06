@@ -96,7 +96,14 @@ async function handleDropFiles(files) {
 
 <template>
   <Transition name="page" mode="out-in">
-    <div v-if="checking" key="loading" class="app-loading" />
+    <div v-if="checking" key="loading" class="app-loading">
+      <div class="loading-spinner">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        </svg>
+        <p>加载中...</p>
+      </div>
+    </div>
     <LoginPage v-else-if="!isLoggedIn" key="login" />
 
     <div v-else class="app" key="main">

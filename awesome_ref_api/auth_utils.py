@@ -1,8 +1,8 @@
 import os
-from datetime import datetime, timedelta, timezone
 import hashlib
-import secrets
+from datetime import datetime, timedelta, timezone
 
+import bcrypt
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
@@ -19,17 +19,22 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 3  # 3 days
 
 
 def hash_password(password: str) -> str:
-    salt = secrets.token_hex(16)
-    h = hashlib.sha256((salt + password).encode()).hexdigest()
-    return f"{salt}${h}"
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if hashed_password.startswith("$2b$") or hashed_password.startswith("$2a$"):
+        return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
+    # Legacy SHA-256 format — migrate to bcrypt on next login
     try:
         salt, h = hashed_password.split("$", 1)
         return hashlib.sha256((salt + plain_password).encode()).hexdigest() == h
     except Exception:
         return False
+
+
+def needs_password_upgrade(hashed_password: str) -> bool:
+    return not (hashed_password.startswith("$2b$") or hashed_password.startswith("$2a$"))
 
 
 def create_access_token(data: dict) -> str:

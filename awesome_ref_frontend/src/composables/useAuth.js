@@ -52,11 +52,7 @@ export function useAuth() {
       const err = await res.json()
       throw new Error(err.detail || '注册失败')
     }
-    const data = await res.json()
-    token.value = data.access_token
-    username.value = data.username
-    logged.value = true
-    return data
+    return await res.json()
   }
 
   function logout() {

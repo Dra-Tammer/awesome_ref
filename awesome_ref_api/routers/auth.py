@@ -1,13 +1,30 @@
 import re
-from fastapi import APIRouter, HTTPException, Depends, status, Response
+import time
+from collections import defaultdict
+
+from fastapi import APIRouter, HTTPException, Request, Depends, status, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import get_db
-from auth_utils import verify_password, hash_password, create_access_token, get_user_by_username, create_user
+from auth_utils import verify_password, hash_password, create_access_token, get_user_by_username, create_user, needs_password_upgrade
 from deps import get_current_user
 
 router = APIRouter()
+
+# Simple in-memory rate limiter: 5 attempts per IP per minute
+_rate_attempts = defaultdict(list)
+_RATE_LIMIT = 5
+_RATE_WINDOW = 60
+
+
+def _check_rate(request: Request):
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    _rate_attempts[ip] = [t for t in _rate_attempts[ip] if now - t < _RATE_WINDOW]
+    if len(_rate_attempts[ip]) >= _RATE_LIMIT:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="操作过于频繁，请稍后再试")
+    _rate_attempts[ip].append(now)
 
 
 class LoginRequest(BaseModel):
@@ -28,13 +45,17 @@ class TokenResponse(BaseModel):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
+def login(req: LoginRequest, response: Response, request: Request, db: Session = Depends(get_db)):
+    _check_rate(request)
     username = req.username.strip()
     if not username or not req.password:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户名和密码不能为空")
     user = get_user_by_username(db, username)
     if not user or not verify_password(req.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
+    if needs_password_upgrade(user.hashed_password):
+        user.hashed_password = hash_password(req.password)
+        db.commit()
     token = create_access_token({"sub": user.username})
     response.set_cookie(
         key="auth_token",
@@ -47,7 +68,8 @@ def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
 
 
 @router.post("/register", response_model=TokenResponse)
-def register(req: RegisterRequest, response: Response, db: Session = Depends(get_db)):
+def register(req: RegisterRequest, response: Response, request: Request, db: Session = Depends(get_db)):
+    _check_rate(request)
     username = req.username.strip()
     password = req.password
     if not username or not password:

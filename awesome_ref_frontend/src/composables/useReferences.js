@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAuth } from './useAuth.js'
 
 const references = ref([])
@@ -6,9 +6,18 @@ const trashReferences = ref([])
 const trashCount = ref(0)
 const selectedIndex = ref(-1)
 const searchQuery = ref('')
+const debouncedSearch = ref('')
 const notesRef = ref({})
 const activeGroupId = ref('all')
 const sortOrder = ref('desc')
+
+let _debounceTimer = null
+watch(searchQuery, (val) => {
+  clearTimeout(_debounceTimer)
+  _debounceTimer = setTimeout(() => {
+    debouncedSearch.value = val
+  }, 200)
+})
 
 export function useReferences() {
   const { getHeaders } = useAuth()
@@ -26,7 +35,7 @@ export function useReferences() {
       }
     }
 
-    const q = searchQuery.value.trim().toLowerCase()
+    const q = debouncedSearch.value.trim().toLowerCase()
     if (q) {
       const words = q.split(/\s+/)
       list = list.filter(r => {
@@ -60,7 +69,7 @@ export function useReferences() {
   })
 
   function setNotes(notes) { notesRef.value = notes }
-  function setActiveGroup(id) { activeGroupId.value = id; selectedIndex.value = 0; searchQuery.value = '' }
+  function setActiveGroup(id) { activeGroupId.value = id; selectedIndex.value = 0; searchQuery.value = ''; debouncedSearch.value = '' }
   function toggleSort() { sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc' }
 
   async function loadReferences() {
@@ -167,11 +176,11 @@ export function useReferences() {
   async function addRefToGroup(refId, groupKey) {
     const ref = references.value.find(r => r.id === refId)
     if (!ref) return
+    const prevGroupIds = [...(ref.groupIds || [])]
     if (!ref.groupIds) ref.groupIds = []
     if (!ref.groupIds.includes(groupKey)) {
       ref.groupIds.push(groupKey)
     }
-    // 加入非"未分组"分组时，自动从"未分组"移除
     if (groupKey !== 'ungrouped') {
       ref.groupIds = ref.groupIds.filter(g => g !== 'ungrouped')
     }
@@ -181,15 +190,19 @@ export function useReferences() {
         method: 'POST',
         headers: getHeaders(),
       })
-    } catch (err) { console.error('Failed to add ref to group:', err) }
+    } catch (err) {
+      ref.groupIds = prevGroupIds
+      references.value = [...references.value]
+      console.error('Failed to add ref to group:', err)
+    }
   }
 
   async function removeRefFromGroup(refId, groupKey) {
     const ref = references.value.find(r => r.id === refId)
     if (!ref) return
+    const prevGroupIds = [...(ref.groupIds || [])]
     if (ref.groupIds) {
       ref.groupIds = ref.groupIds.filter(g => g !== groupKey)
-      // 从所有分组移除后，自动回到"未分组"
       if (ref.groupIds.length === 0) {
         ref.groupIds = ['ungrouped']
       }
@@ -200,7 +213,11 @@ export function useReferences() {
         method: 'DELETE',
         headers: getHeaders(),
       })
-    } catch (err) { console.error('Failed to remove ref from group:', err) }
+    } catch (err) {
+      ref.groupIds = prevGroupIds
+      references.value = [...references.value]
+      console.error('Failed to remove ref from group:', err)
+    }
   }
 
   async function uploadPdf(refKey, file) {
@@ -253,6 +270,7 @@ export function useReferences() {
     trashCount.value = 0
     selectedIndex.value = -1
     searchQuery.value = ''
+    debouncedSearch.value = ''
     notesRef.value = {}
     activeGroupId.value = 'all'
     sortOrder.value = 'desc'
