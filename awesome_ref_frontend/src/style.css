@@ -964,15 +964,22 @@ html, body {
   white-space: nowrap;
 }
 
-.btn-sort:hover {
-  color: var(--accent);
-  border-color: var(--accent);
+.btn-sort svg {
+  flex-shrink: 0;
+  vertical-align: middle;
+  margin: 0;
 }
 
 .btn-sort-label {
   font-size: 11px;
   font-weight: 500;
   font-family: inherit;
+  line-height: 1;
+}
+
+.btn-sort:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .btn-sort-field {

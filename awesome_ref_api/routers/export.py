@@ -1,5 +1,6 @@
 import os
 import time as _time
+import uuid
 from datetime import datetime, timezone
 from io import BytesIO
 
@@ -390,7 +391,7 @@ def import_data(data: ImportData, user: User = Depends(get_current_user), db: Se
         if name in existing_groups:
             group_key_map[old_key] = existing_groups[name].group_key
         else:
-            new_key = f"grp-{int(_time.time() * 1000)}"
+            new_key = f"grp-{uuid.uuid4().hex[:12]}"
             new_group = Group(user_id=user.id, group_key=new_key, name=name)
             db.add(new_group)
             db.flush()

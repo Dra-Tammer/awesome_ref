@@ -1,4 +1,5 @@
 import time as _time
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -39,7 +40,7 @@ def create_group(req: GroupRequest, user: User = Depends(get_current_user), db: 
     existing = db.query(Group).filter(Group.user_id == user.id, Group.name == name).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="分组名称已存在，请使用其他名称")
-    group_key = f"grp-{int(_time.time() * 1000)}"
+    group_key = f"grp-{uuid.uuid4().hex[:12]}"
     g = Group(user_id=user.id, group_key=group_key, name=name)
     db.add(g)
     db.commit()
