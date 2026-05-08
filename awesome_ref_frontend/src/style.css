@@ -1574,6 +1574,28 @@ html, body {
 .detail-row .detail-field { flex: 1; margin-bottom: 0; min-width: 0; }
 .detail-row .detail-field:last-child { flex: 2; }
 
+/* 内联编辑 */
+.edit-field { cursor: default; }
+.edit-field .edit-trigger {
+  cursor: text;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.15s;
+}
+.edit-field .edit-trigger:hover {
+  border-bottom-color: var(--accent);
+}
+.edit-inline-input {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 14px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  box-sizing: border-box;
+}
+
 .detail-doi {
   color: var(--accent) !important;
   text-decoration: none;

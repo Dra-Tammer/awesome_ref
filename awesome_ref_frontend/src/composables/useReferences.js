@@ -264,6 +264,23 @@ export function useReferences() {
     }
   }
 
+  async function updateReference(refKey, fields) {
+    try {
+      const res = await fetch(`/api/references/${encodeURIComponent(refKey)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify(fields),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        const ref = references.value.find(r => r.id === refKey)
+        if (ref) Object.assign(ref, updated)
+        return true
+      }
+    } catch (err) { console.error('Failed to update reference:', err) }
+    return false
+  }
+
   async function deletePdf(refKey) {
     try {
       const res = await fetch(`/api/references/${encodeURIComponent(refKey)}/pdf`, {
@@ -305,7 +322,7 @@ export function useReferences() {
     loadReferences, loadTrash, addReferences,
     softDeleteRef, restoreRef, permanentDeleteRef, clearTrash,
     addRefToGroup, removeRefFromGroup,
-    uploadPdf, deletePdf,
+    updateReference, uploadPdf, deletePdf,
     selectByIndex, selectById, resetAll,
   }
 }

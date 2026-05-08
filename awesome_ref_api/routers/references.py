@@ -112,6 +112,52 @@ def clear_trash(user: User = Depends(get_current_user), db: Session = Depends(ge
     return {"success": True, "count": len(trashed)}
 
 
+class UpdateReferenceItem(BaseModel):
+    title: str | None = None
+    type: str | None = None
+    authors: list | None = None
+    year: str | None = None
+    journal: str | None = None
+    volume: str | None = None
+    issue: str | None = None
+    pages: str | None = None
+    abstract: str | None = None
+    doi: str | None = None
+    keywords: list | None = None
+
+
+@router.patch("/references/{ref_key}")
+def update_reference(ref_key: str, item: UpdateReferenceItem, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    ref = db.query(Reference).filter(Reference.user_id == user.id, Reference.ref_key == ref_key, Reference.deleted_at.is_(None)).first()
+    if not ref:
+        raise HTTPException(status_code=404, detail="文献不存在")
+    update_data = item.model_dump(exclude_none=True)
+    if "title" in update_data:
+        ref.title = (update_data["title"] or "").strip()
+    if "type" in update_data:
+        ref.ref_type = update_data["type"]
+    if "authors" in update_data:
+        ref.authors_json = json.dumps(update_data["authors"], ensure_ascii=False)
+    if "year" in update_data:
+        ref.year = update_data["year"]
+    if "journal" in update_data:
+        ref.journal = update_data["journal"]
+    if "volume" in update_data:
+        ref.volume = update_data["volume"]
+    if "issue" in update_data:
+        ref.issue = update_data["issue"]
+    if "pages" in update_data:
+        ref.pages = update_data["pages"]
+    if "abstract" in update_data:
+        ref.abstract = update_data["abstract"]
+    if "doi" in update_data:
+        ref.doi = update_data["doi"]
+    if "keywords" in update_data:
+        ref.keywords_json = json.dumps(update_data["keywords"], ensure_ascii=False)
+    db.commit()
+    return _to_dict(ref)
+
+
 @router.post("/references")
 def save_references(items: list[ReferenceItem], user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     data = [item.model_dump() for item in items]

@@ -8,7 +8,7 @@ import { highlightText } from '../utils/highlight.js'
 import NoteEditor from './NoteEditor.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 
-const { selectedReference, addRefToGroup, removeRefFromGroup, searchQuery, isTrashMode, softDeleteRef, restoreRef, permanentDeleteRef, uploadPdf, deletePdf } = useReferences()
+const { selectedReference, addRefToGroup, removeRefFromGroup, searchQuery, isTrashMode, softDeleteRef, restoreRef, permanentDeleteRef, updateReference, uploadPdf, deletePdf } = useReferences()
 const { groups } = useGroups()
 const { showToast } = useToast()
 
@@ -117,6 +117,43 @@ function onPdfReplace() {
 async function onPdfDelete() {
   const ok = await deletePdf(selectedReference.value.id)
   if (ok) showToast('PDF 已移除')
+}
+
+// ── 内联编辑 ──
+const editingField = ref(null)   // 'year' | 'journal' | null
+const editValue = ref('')
+const editInput = ref(null)      // template ref for auto-focus
+
+function startEdit(field) {
+  if (isTrashMode.value) return
+  editingField.value = field
+  editValue.value = selectedReference.value?.[field] || ''
+  // auto-focus after next tick
+  setTimeout(() => editInput.value?.focus(), 0)
+}
+
+async function saveEdit() {
+  const field = editingField.value
+  if (!field || !selectedReference.value) return
+  const newVal = editValue.value.trim()
+  if (newVal !== (selectedReference.value[field] || '')) {
+    const ok = await updateReference(selectedReference.value.id, { [field]: newVal })
+    if (ok) showToast(field === 'year' ? '年份已更新' : '期刊已更新')
+  }
+  editingField.value = null
+}
+
+function cancelEdit() {
+  editingField.value = null
+}
+
+function onEditKeydown(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    saveEdit()
+  } else if (e.key === 'Escape') {
+    cancelEdit()
+  }
 }
 </script>
 
@@ -235,13 +272,31 @@ async function onPdfDelete() {
           </div>
         </div>
         <div class="detail-row">
-          <div class="detail-field">
+          <div class="detail-field edit-field" @click="startEdit('year')">
             <label>年份</label>
-            <span>{{ selectedReference.year || '—' }}</span>
+            <input
+              v-if="editingField === 'year'"
+              ref="editInput"
+              v-model="editValue"
+              class="edit-inline-input"
+              @keydown="onEditKeydown"
+              @blur="saveEdit"
+              @click.stop
+            />
+            <span v-else class="edit-trigger" :title="isTrashMode ? '' : '点击编辑'">{{ selectedReference.year || '—' }}</span>
           </div>
-          <div class="detail-field">
+          <div class="detail-field edit-field" @click="startEdit('journal')">
             <label>期刊</label>
-            <span>{{ selectedReference.journal || '—' }}</span>
+            <input
+              v-if="editingField === 'journal'"
+              ref="editInput"
+              v-model="editValue"
+              class="edit-inline-input"
+              @keydown="onEditKeydown"
+              @blur="saveEdit"
+              @click.stop
+            />
+            <span v-else class="edit-trigger" :title="isTrashMode ? '' : '点击编辑'">{{ selectedReference.journal || '—' }}</span>
           </div>
         </div>
         <div class="detail-row">
