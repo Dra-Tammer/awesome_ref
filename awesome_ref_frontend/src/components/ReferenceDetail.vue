@@ -134,7 +134,7 @@ async function onPdfDelete() {
         </svg>
       </div>
       <h2>选择一篇文献查看详情</h2>
-      <p>从左侧列表中选择文献，或导入新的 RIS 文件</p>
+      <p>从列表中选择文献，或导入新的 RIS 文件</p>
     </div>
 
     <!-- 详情内容 -->

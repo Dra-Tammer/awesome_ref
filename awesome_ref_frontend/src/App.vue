@@ -14,53 +14,119 @@ import DropOverlay from './components/DropOverlay.vue'
 
 const checking = ref(true)
 const { isLoggedIn, tryRestoreSession } = useAuth()
-const { loadReferences, loadTrash, addReferences, setNotes, resetAll } = useReferences()
+const { loadReferences, loadTrash, addReferences, setNotes, resetAll, selectedReference } = useReferences()
 const { loadNotes, notes, resetNotes } = useNotes()
 const { loadGroups, resetGroups } = useGroups()
 
-// 侧边栏
-const sidebarWidth = ref(360)
-const collapsed = ref(false)
-const prevWidth = ref(360)
-const resizing = ref(false)
-let rafId = null
+// Left sidebar (GroupList)
+const leftWidth = ref(240)
+const leftCollapsed = ref(false)
+const leftPrevWidth = ref(240)
 
-function onDragStart(e) {
+// Right sidebar (ReferenceDetail)
+const rightWidth = ref(780)
+const rightCollapsed = ref(false)
+const rightPrevWidth = ref(780)
+
+const resizingLeft = ref(false)
+const resizingRight = ref(false)
+let leftRaf = null
+let rightRaf = null
+
+function onLeftHandleDown(e) {
   e.preventDefault()
-  resizing.value = true
+  if (leftCollapsed.value) {
+    toggleLeftPanel()
+    return
+  }
   const startX = e.clientX
-  const startW = sidebarWidth.value
+  const startW = leftWidth.value
+  let moved = false
 
   function onMove(ev) {
-    if (rafId) cancelAnimationFrame(rafId)
-    rafId = requestAnimationFrame(() => {
-      const delta = ev.clientX - startX
-      sidebarWidth.value = Math.max(240, Math.min(600, startW + delta))
+    if (!moved && Math.abs(ev.clientX - startX) > 3) moved = true
+    if (!moved) return
+    resizingLeft.value = true
+    if (leftRaf) cancelAnimationFrame(leftRaf)
+    leftRaf = requestAnimationFrame(() => {
+      leftWidth.value = Math.max(180, Math.min(400, startW + ev.clientX - startX))
     })
   }
 
   function onUp() {
-    resizing.value = false
-    if (rafId) cancelAnimationFrame(rafId)
-    rafId = null
+    resizingLeft.value = false
+    if (leftRaf) cancelAnimationFrame(leftRaf)
+    leftRaf = null
     window.removeEventListener('mousemove', onMove)
     window.removeEventListener('mouseup', onUp)
+    if (!moved) toggleLeftPanel()
   }
 
   window.addEventListener('mousemove', onMove)
   window.addEventListener('mouseup', onUp)
 }
 
-function toggleCollapse() {
-  if (collapsed.value) {
-    collapsed.value = false
-    sidebarWidth.value = prevWidth.value
+function onRightHandleDown(e) {
+  e.preventDefault()
+  if (rightCollapsed.value) {
+    toggleRightPanel()
+    return
+  }
+  const startX = e.clientX
+  const startW = rightWidth.value
+  let moved = false
+
+  function onMove(ev) {
+    if (!moved && Math.abs(ev.clientX - startX) > 3) moved = true
+    if (!moved) return
+    resizingRight.value = true
+    if (rightRaf) cancelAnimationFrame(rightRaf)
+    rightRaf = requestAnimationFrame(() => {
+      rightWidth.value = Math.max(320, Math.min(800, startW + startX - ev.clientX))
+    })
+  }
+
+  function onUp() {
+    resizingRight.value = false
+    if (rightRaf) cancelAnimationFrame(rightRaf)
+    rightRaf = null
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+    if (!moved) toggleRightPanel()
+  }
+
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
+}
+
+function toggleLeftPanel() {
+  if (leftCollapsed.value) {
+    leftCollapsed.value = false
+    leftWidth.value = leftPrevWidth.value
   } else {
-    prevWidth.value = sidebarWidth.value
-    collapsed.value = true
-    sidebarWidth.value = 0
+    leftPrevWidth.value = leftWidth.value
+    leftCollapsed.value = true
+    leftWidth.value = 0
   }
 }
+
+function toggleRightPanel() {
+  if (rightCollapsed.value) {
+    rightCollapsed.value = false
+    rightWidth.value = rightPrevWidth.value
+  } else {
+    rightPrevWidth.value = rightWidth.value
+    rightCollapsed.value = true
+    rightWidth.value = 0
+  }
+}
+
+// Auto-expand right panel when a reference is selected
+watch(selectedReference, (ref) => {
+  if (ref && rightCollapsed.value) {
+    toggleRightPanel()
+  }
+})
 
 watch(notes, (val) => setNotes(val), { immediate: true })
 
@@ -107,24 +173,51 @@ async function handleDropFiles(files) {
     <LoginPage v-else-if="!isLoggedIn" key="login" />
 
     <div v-else class="app" key="main">
-      <Toolbar :collapsed="collapsed" @toggle-sidebar="toggleCollapse" />
+      <Toolbar />
       <div class="main">
         <aside
-          class="ref-list-panel"
-          :class="{ collapsed, resizing }"
-          :style="{ width: sidebarWidth + 'px' }"
+          class="side-panel left-panel"
+          :class="{ collapsed: leftCollapsed, resizing: resizingLeft }"
+          :style="{ width: leftWidth + 'px' }"
         >
-          <div class="sidebar-content" :class="{ hidden: collapsed }">
+          <div class="panel-content" :class="{ hidden: leftCollapsed }">
             <GroupList />
-            <ReferenceList />
           </div>
         </aside>
         <div
           class="resize-handle"
-          :class="{ active: resizing }"
-          @mousedown="onDragStart"
-        ></div>
-        <ReferenceDetail />
+          :class="{ active: resizingLeft, collapsed: leftCollapsed }"
+          @mousedown="onLeftHandleDown"
+        >
+          <span class="collapse-arrow" :class="{ visible: leftCollapsed }" title="展开分组面板">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </span>
+        </div>
+        <section class="middle-panel">
+          <ReferenceList />
+        </section>
+        <div
+          class="resize-handle"
+          :class="{ active: resizingRight, collapsed: rightCollapsed }"
+          @mousedown="onRightHandleDown"
+        >
+          <span class="collapse-arrow" :class="{ visible: rightCollapsed }" title="展开详情面板">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </span>
+        </div>
+        <aside
+          class="side-panel right-panel"
+          :class="{ collapsed: rightCollapsed, resizing: resizingRight }"
+          :style="{ width: rightWidth + 'px' }"
+        >
+          <div class="panel-content" :class="{ hidden: rightCollapsed }">
+            <ReferenceDetail />
+          </div>
+        </aside>
       </div>
       <DropOverlay :on-files="handleDropFiles" />
     </div>

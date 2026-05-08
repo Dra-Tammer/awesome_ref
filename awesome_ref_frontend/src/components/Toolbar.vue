@@ -8,12 +8,6 @@ import { useTheme } from '../composables/useTheme.js'
 import { useToast } from '../composables/useToast.js'
 import ReferenceEditor from './ReferenceEditor.vue'
 
-const props = defineProps({
-  collapsed: Boolean,
-})
-
-const emit = defineEmits(['toggle-sidebar'])
-
 const { addReferences, loadReferences, loadTrash } = useReferences()
 const { loadGroups } = useGroups()
 const { loadNotes } = useNotes()
@@ -192,11 +186,6 @@ defineExpose({ handleFiles })
 <template>
   <header class="toolbar">
     <div class="toolbar-left">
-      <button class="btn-sidebar-toggle" @click="emit('toggle-sidebar')" :title="collapsed ? '展开侧边栏' : '收起侧边栏'">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
-        </svg>
-      </button>
       <h1 class="logo">
         <span class="logo-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
