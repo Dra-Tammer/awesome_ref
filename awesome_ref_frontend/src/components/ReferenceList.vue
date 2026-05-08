@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useReferences } from '../composables/useReferences.js'
 import { useNotes } from '../composables/useNotes.js'
 import { useToast } from '../composables/useToast.js'
@@ -46,7 +46,7 @@ function scrollToActive() {
 }
 
 watch(selectedReference, () => {
-  scrollToActive()
+  nextTick(() => scrollToActive())
 })
 
 function getAuthorDisplay(authors) {
