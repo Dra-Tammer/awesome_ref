@@ -9,6 +9,7 @@ const searchQuery = ref('')
 const debouncedSearch = ref('')
 const notesRef = ref({})
 const activeGroupId = ref('all')
+const sortField = ref('year')
 const sortOrder = ref('desc')
 
 let _debounceTimer = null
@@ -51,12 +52,31 @@ export function useReferences() {
       })
     }
 
+    const field = sortField.value
     const dir = sortOrder.value === 'desc' ? -1 : 1
     list = [...list].sort((a, b) => {
-      const ya = parseInt(a.year) || 0
-      const yb = parseInt(b.year) || 0
-      if (ya !== yb) return (yb - ya) * dir
-      return a.id > b.id ? dir : -dir
+      if (field === 'year') {
+        const ya = parseInt(a.year) || 0
+        const yb = parseInt(b.year) || 0
+        if (ya !== yb) return (yb - ya) * dir
+        return a.id > b.id ? dir : -dir
+      }
+      if (field === 'created') {
+        const da = a.createdAt || ''
+        const db = b.createdAt || ''
+        if (da !== db) return da > db ? dir : -dir
+        return a.id > b.id ? 1 : -1
+      }
+      if (field === 'note') {
+        const na = notesRef.value[a.id]?.updatedAt || ''
+        const nb = notesRef.value[b.id]?.updatedAt || ''
+        if (na && !nb) return -dir
+        if (!na && nb) return dir
+        if (!na && !nb) return a.id > b.id ? 1 : -1
+        if (na !== nb) return na > nb ? dir : -dir
+        return a.id > b.id ? 1 : -1
+      }
+      return 0
     })
 
     return list
@@ -71,6 +91,7 @@ export function useReferences() {
   function setNotes(notes) { notesRef.value = notes }
   function setActiveGroup(id) { activeGroupId.value = id; selectedIndex.value = 0; searchQuery.value = ''; debouncedSearch.value = '' }
   function toggleSort() { sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc' }
+  function setSortField(f) { sortField.value = f }
 
   async function loadReferences() {
     try {
@@ -273,13 +294,14 @@ export function useReferences() {
     debouncedSearch.value = ''
     notesRef.value = {}
     activeGroupId.value = 'all'
+    sortField.value = 'year'
     sortOrder.value = 'desc'
   }
 
   return {
     references, trashReferences, trashCount, filteredReferences, selectedReference,
-    selectedIndex, searchQuery, activeGroupId, sortOrder, isTrashMode,
-    setNotes, setActiveGroup, toggleSort,
+    selectedIndex, searchQuery, activeGroupId, sortField, sortOrder, isTrashMode,
+    setNotes, setActiveGroup, toggleSort, setSortField,
     loadReferences, loadTrash, addReferences,
     softDeleteRef, restoreRef, permanentDeleteRef, clearTrash,
     addRefToGroup, removeRefFromGroup,

@@ -300,5 +300,6 @@ def _to_dict(r: Reference) -> dict:
         "keywords": json.loads(r.keywords_json) if r.keywords_json else [],
         "groupIds": [g.group_key for g in r.groups],
         "deletedAt": r.deleted_at.isoformat() if r.deleted_at else None,
+        "createdAt": r.created_at.isoformat() if r.created_at else None,
         "pdfFilename": r.pdf_filename,
     }

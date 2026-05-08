@@ -1,17 +1,43 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useReferences } from '../composables/useReferences.js'
 import { useNotes } from '../composables/useNotes.js'
 import { useToast } from '../composables/useToast.js'
 import { highlightText } from '../utils/highlight.js'
 import ConfirmDialog from './ConfirmDialog.vue'
 
-const { filteredReferences, references, trashReferences, selectByIndex, selectById, selectedReference, sortOrder, toggleSort, searchQuery, activeGroupId, isTrashMode, clearTrash } = useReferences()
+const { filteredReferences, references, trashReferences, selectByIndex, selectById, selectedReference, sortField, sortOrder, toggleSort, setSortField, searchQuery, activeGroupId, isTrashMode, clearTrash } = useReferences()
 const { hasNote } = useNotes()
 const { showToast } = useToast()
 
 const listRef = ref(null)
 const clearTrashConfirm = ref(false)
+const showSortMenu = ref(false)
+const sortMenuRef = ref(null)
+
+const sortFieldLabel = computed(() => {
+  const map = { year: '年份', created: '添加时间', note: '笔记时间' }
+  return map[sortField.value] || '年份'
+})
+
+function onSortFieldClick(e) {
+  e.stopPropagation()
+  showSortMenu.value = !showSortMenu.value
+}
+
+function onPickField(field) {
+  setSortField(field)
+  showSortMenu.value = false
+}
+
+function onClickOutside(e) {
+  if (sortMenuRef.value && !sortMenuRef.value.contains(e.target)) {
+    showSortMenu.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', onClickOutside))
+onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
 
 function scrollToActive() {
   if (!listRef.value) return
@@ -40,13 +66,30 @@ async function onConfirmClearTrash() {
   <div class="list-header">
     <span class="list-title">{{ isTrashMode ? '回收站' : '文献列表' }}</span>
     <div class="list-header-right" v-if="!isTrashMode">
-      <button class="btn-sort" @click="toggleSort" :title="sortOrder === 'desc' ? '最新在前' : '最早在前'">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <!-- sort direction toggle -->
+      <button class="btn-sort" @click="toggleSort" :title="sortOrder === 'desc' ? '降序' : '升序'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="12" y1="5" x2="12" y2="19"/>
           <polyline v-if="sortOrder === 'desc'" points="19 12 12 19 5 12"/>
           <polyline v-else points="5 12 12 5 19 12"/>
         </svg>
       </button>
+      <!-- sort field selector -->
+      <div class="sort-menu-wrapper" ref="sortMenuRef">
+        <button class="btn-sort btn-sort-field" @click="onSortFieldClick" title="排序字段">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
+          </svg>
+          <span class="btn-sort-label">{{ sortFieldLabel }}</span>
+        </button>
+        <Transition name="dropdown">
+          <div v-if="showSortMenu" class="sort-dropdown">
+            <button class="sort-dropdown-item" :class="{ active: sortField === 'year' }" @click="onPickField('year')">文献年份</button>
+            <button class="sort-dropdown-item" :class="{ active: sortField === 'created' }" @click="onPickField('created')">添加时间</button>
+            <button class="sort-dropdown-item" :class="{ active: sortField === 'note' }" @click="onPickField('note')">笔记更新时间</button>
+          </div>
+        </Transition>
+      </div>
       <button class="btn-sort" @click="scrollToActive" title="定位到当前文献">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>
