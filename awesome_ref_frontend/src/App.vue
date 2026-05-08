@@ -14,7 +14,7 @@ import DropOverlay from './components/DropOverlay.vue'
 
 const checking = ref(true)
 const { isLoggedIn, tryRestoreSession } = useAuth()
-const { loadReferences, loadTrash, addReferences, setNotes, resetAll, selectedReference } = useReferences()
+const { loadReferences, loadTrash, addReferences, setNotes, resetAll, selectedReference, selectedIndex, filteredReferences, selectByIndex } = useReferences()
 const { loadNotes, notes, resetNotes } = useNotes()
 const { loadGroups, resetGroups } = useGroups()
 
@@ -146,6 +146,21 @@ onMounted(async () => {
     await Promise.all([loadReferences(), loadNotes(), loadGroups(), loadTrash()])
   }
   checking.value = false
+
+  // Global keyboard navigation for reference list
+  window.addEventListener('keydown', (e) => {
+    const tag = document.activeElement?.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+    const list = filteredReferences.value
+    if (!list || list.length === 0) return
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (selectedIndex.value > 0) selectByIndex(selectedIndex.value - 1)
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (selectedIndex.value < list.length - 1) selectByIndex(selectedIndex.value + 1)
+    }
+  })
 })
 
 async function handleDropFiles(files) {

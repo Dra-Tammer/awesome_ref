@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useReferences } from '../composables/useReferences.js'
 import { useNotes } from '../composables/useNotes.js'
 import { useToast } from '../composables/useToast.js'
@@ -44,6 +44,10 @@ function scrollToActive() {
   const el = listRef.value.querySelector('.ref-card.active')
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
+
+watch(selectedReference, () => {
+  scrollToActive()
+})
 
 function getAuthorDisplay(authors) {
   if (authors.length === 0) return '未知作者'
