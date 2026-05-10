@@ -12,6 +12,21 @@ const activeGroupId = ref('all')
 const sortField = ref('year')
 const sortOrder = ref('desc')
 
+const MAX_RECENT = 5
+const recentRefs = ref(JSON.parse(localStorage.getItem('recentRefs') || '[]'))
+
+function _pushRecent(ref) {
+  const entry = { id: ref.id, title: ref.title }
+  const filtered = recentRefs.value.filter(r => r.id !== entry.id)
+  recentRefs.value = [entry, ...filtered].slice(0, MAX_RECENT)
+  localStorage.setItem('recentRefs', JSON.stringify(recentRefs.value))
+}
+
+function _removeRecent(refKey) {
+  recentRefs.value = recentRefs.value.filter(r => r.id !== refKey)
+  localStorage.setItem('recentRefs', JSON.stringify(recentRefs.value))
+}
+
 let _debounceTimer = null
 watch(searchQuery, (val) => {
   clearTimeout(_debounceTimer)
@@ -122,6 +137,7 @@ export function useReferences() {
       })
       if (res.ok) {
         references.value = references.value.filter(r => r.id !== refKey)
+        _removeRecent(refKey)
         if (selectedIndex.value >= filteredReferences.value.length) selectedIndex.value = 0
         await loadTrash()
         return true
@@ -156,6 +172,7 @@ export function useReferences() {
       if (res.ok) {
         trashReferences.value = trashReferences.value.filter(r => r.id !== refKey)
         trashCount.value = trashReferences.value.length
+        _removeRecent(refKey)
         if (selectedIndex.value >= filteredReferences.value.length) selectedIndex.value = 0
         return true
       }
@@ -171,6 +188,9 @@ export function useReferences() {
       })
       if (res.ok) {
         const data = await res.json()
+        const trashIds = new Set(trashReferences.value.map(r => r.id))
+        recentRefs.value = recentRefs.value.filter(r => !trashIds.has(r.id))
+        localStorage.setItem('recentRefs', JSON.stringify(recentRefs.value))
         trashReferences.value = []
         trashCount.value = 0
         selectedIndex.value = 0
@@ -296,10 +316,18 @@ export function useReferences() {
     return false
   }
 
-  function selectByIndex(index) { selectedIndex.value = index }
+  function selectByIndex(index) {
+    selectedIndex.value = index
+    const r = filteredReferences.value[index]
+    if (r) _pushRecent(r)
+  }
   function selectById(id) {
     const idx = filteredReferences.value.findIndex(r => r.id === id)
-    if (idx !== -1) selectedIndex.value = idx
+    if (idx !== -1) {
+      selectedIndex.value = idx
+      const r = filteredReferences.value[idx]
+      if (r) _pushRecent(r)
+    }
   }
 
   function resetAll() {
@@ -318,6 +346,7 @@ export function useReferences() {
   return {
     references, trashReferences, trashCount, filteredReferences, selectedReference,
     selectedIndex, searchQuery, activeGroupId, sortField, sortOrder, isTrashMode,
+    recentRefs,
     setNotes, setActiveGroup, toggleSort, setSortField,
     loadReferences, loadTrash, addReferences,
     softDeleteRef, restoreRef, permanentDeleteRef, clearTrash,

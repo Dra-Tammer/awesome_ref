@@ -6,7 +6,7 @@ import { useToast } from '../composables/useToast.js'
 import ConfirmDialog from './ConfirmDialog.vue'
 
 const { groups, addGroup, deleteGroup, renameGroup } = useGroups()
-const { activeGroupId, setActiveGroup, references, trashCount, loadTrash } = useReferences()
+const { activeGroupId, setActiveGroup, references, trashCount, loadTrash, recentRefs, selectById } = useReferences()
 const { showToast } = useToast()
 
 const showForm = ref(false)
@@ -77,6 +77,11 @@ function getCount(groupId) {
 async function onOpenTrash() {
   await loadTrash()
   setActiveGroup('trash')
+}
+
+function onClickRecent(refId) {
+  setActiveGroup('all')
+  selectById(refId)
 }
 </script>
 
@@ -180,6 +185,24 @@ async function onOpenTrash() {
           </button>
         </div>
       </template>
+    </div>
+  </div>
+
+  <div v-if="recentRefs.length" class="recent-refs">
+    <div class="recent-refs-header">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
+      <span>最近浏览</span>
+    </div>
+    <div
+      v-for="r in recentRefs"
+      :key="r.id"
+      class="recent-ref-item"
+      @click="onClickRecent(r.id)"
+      :title="r.title"
+    >
+      {{ r.title }}
     </div>
   </div>
 

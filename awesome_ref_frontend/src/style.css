@@ -860,6 +860,42 @@ html, body {
   color: var(--text);
 }
 
+/* ========== Recent Refs ========== */
+.recent-refs {
+  border-top: 1px solid var(--border);
+  padding: 8px 12px 10px;
+  flex-shrink: 0;
+}
+
+.recent-refs-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.recent-refs-header svg { flex-shrink: 0; }
+
+.recent-ref-item {
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+
+.recent-ref-item:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
 /* ========== Sort Button ========== */
 .list-header {
   display: flex;
