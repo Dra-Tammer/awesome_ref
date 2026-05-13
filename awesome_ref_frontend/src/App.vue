@@ -4,12 +4,15 @@ import { useAuth } from './composables/useAuth.js'
 import { useReferences } from './composables/useReferences.js'
 import { useNotes } from './composables/useNotes.js'
 import { useGroups } from './composables/useGroups.js'
+import { useStandaloneNotes } from './composables/useStandaloneNotes.js'
 import { parseRIS } from './utils/risParser.js'
 import LoginPage from './components/LoginPage.vue'
 import Toolbar from './components/Toolbar.vue'
 import GroupList from './components/GroupList.vue'
 import ReferenceList from './components/ReferenceList.vue'
 import ReferenceDetail from './components/ReferenceDetail.vue'
+import NoteList from './components/NoteList.vue'
+import StandaloneNoteEditor from './components/StandaloneNoteEditor.vue'
 import DropOverlay from './components/DropOverlay.vue'
 
 const checking = ref(true)
@@ -17,6 +20,9 @@ const { isLoggedIn, tryRestoreSession } = useAuth()
 const { loadReferences, loadTrash, addReferences, setNotes, resetAll, selectedReference, selectedIndex, filteredReferences, selectByIndex } = useReferences()
 const { loadNotes, notes, resetNotes } = useNotes()
 const { loadGroups, resetGroups } = useGroups()
+const { notes: standaloneNotes, loadNotes: loadStandaloneNotes, resetNotes: resetStandaloneNotes, selectedNote: selectedStandaloneNote, selectNote: selectStandaloneNote } = useStandaloneNotes()
+
+const viewMode = ref('references') // 'references' | 'notes'
 
 // Left sidebar (GroupList)
 const leftWidth = ref(240)
@@ -82,7 +88,8 @@ function onRightHandleDown(e) {
     resizingRight.value = true
     if (rightRaf) cancelAnimationFrame(rightRaf)
     rightRaf = requestAnimationFrame(() => {
-      rightWidth.value = Math.max(320, Math.min(800, startW + startX - ev.clientX))
+      const minW = viewMode.value === 'notes' ? 180 : 320
+      rightWidth.value = Math.max(minW, Math.min(800, startW + startX - ev.clientX))
     })
   }
 
@@ -128,22 +135,47 @@ watch(selectedReference, (ref) => {
   }
 })
 
+// Auto-expand right panel when a standalone note is selected
+watch(selectedStandaloneNote, (note) => {
+  if (note && rightCollapsed.value) {
+    toggleRightPanel()
+  }
+})
+
+const rightPrevWidthForNotes = ref(780)
+
+// Auto-select first note when switching to notes mode
+watch(viewMode, (mode) => {
+  if (mode === 'notes') {
+    if (!selectedStandaloneNote.value && standaloneNotes.value.length > 0) {
+      selectStandaloneNote(standaloneNotes.value[0])
+    }
+    rightPrevWidthForNotes.value = rightWidth.value
+    rightWidth.value = leftWidth.value
+    rightPrevWidth.value = leftWidth.value
+  } else {
+    rightWidth.value = rightPrevWidthForNotes.value
+    rightPrevWidth.value = rightPrevWidthForNotes.value
+  }
+})
+
 watch(notes, (val) => setNotes(val), { immediate: true })
 
 watch(isLoggedIn, async (loggedIn) => {
   if (loggedIn) {
-    await Promise.all([loadReferences(), loadNotes(), loadGroups(), loadTrash()])
+    await Promise.all([loadReferences(), loadNotes(), loadGroups(), loadTrash(), loadStandaloneNotes()])
   } else {
     resetAll()
     resetNotes()
     resetGroups()
+    resetStandaloneNotes()
   }
 })
 
 onMounted(async () => {
   const restored = await tryRestoreSession()
   if (restored) {
-    await Promise.all([loadReferences(), loadNotes(), loadGroups(), loadTrash()])
+    await Promise.all([loadReferences(), loadNotes(), loadGroups(), loadTrash(), loadStandaloneNotes()])
   }
   checking.value = false
 
@@ -188,7 +220,7 @@ async function handleDropFiles(files) {
     <LoginPage v-else-if="!isLoggedIn" key="login" />
 
     <div v-else class="app" key="main">
-      <Toolbar />
+      <Toolbar :viewMode="viewMode" @update:viewMode="viewMode = $event" />
       <div class="main">
         <aside
           class="side-panel left-panel"
@@ -196,7 +228,8 @@ async function handleDropFiles(files) {
           :style="{ width: leftWidth + 'px' }"
         >
           <div class="panel-content" :class="{ hidden: leftCollapsed }">
-            <GroupList />
+            <GroupList v-if="viewMode === 'references'" />
+            <NoteList v-if="viewMode === 'notes'" />
           </div>
         </aside>
         <div
@@ -211,7 +244,8 @@ async function handleDropFiles(files) {
           </span>
         </div>
         <section class="middle-panel">
-          <ReferenceList />
+          <ReferenceList v-if="viewMode === 'references'" />
+          <StandaloneNoteEditor v-if="viewMode === 'notes'" />
         </section>
         <div
           class="resize-handle"
@@ -230,11 +264,22 @@ async function handleDropFiles(files) {
           :style="{ width: rightWidth + 'px' }"
         >
           <div class="panel-content" :class="{ hidden: rightCollapsed }">
-            <ReferenceDetail />
+            <ReferenceDetail v-if="viewMode === 'references'" />
+            <div v-if="viewMode === 'notes'" class="detail-panel">
+              <div class="detail-empty">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                <h2>独立笔记</h2>
+                <p>在左侧创建和管理笔记<br>支持 Markdown 编辑和图片插入</p>
+              </div>
+            </div>
           </div>
         </aside>
       </div>
-      <DropOverlay :on-files="handleDropFiles" />
+      <DropOverlay v-if="viewMode === 'references'" :on-files="handleDropFiles" />
     </div>
   </Transition>
 </template>

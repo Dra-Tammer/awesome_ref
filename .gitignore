@@ -34,5 +34,12 @@ awesome_ref_api/data/
 # User uploaded PDFs (keep directory, ignore files)
 awesome_ref_api/pdf_data/*.pdf
 
+# User uploaded note images
+awesome_ref_api/images_data/*
+
+# Note markdown files
+awesome_ref_api/note_mark_data/*.md
+!awesome_ref_api/note_mark_data/.gitkeep
+
 # Claude
 .claude/

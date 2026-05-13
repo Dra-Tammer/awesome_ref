@@ -138,7 +138,11 @@ async function saveEdit() {
   const newVal = editValue.value.trim()
   if (newVal !== (selectedReference.value[field] || '')) {
     const ok = await updateReference(selectedReference.value.id, { [field]: newVal })
-    if (ok) showToast(field === 'year' ? '年份已更新' : '期刊已更新')
+    if (ok) {
+      showToast(field === 'year' ? '年份已更新' : '期刊已更新')
+    } else {
+      showToast('保存失败', 'error')
+    }
   }
   editingField.value = null
 }

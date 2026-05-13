@@ -14,9 +14,9 @@ from pathlib import Path
 
 from sqlalchemy import text
 from database import engine, SessionLocal, Base
-from models import User, Reference, Note, Group
+from models import User, Reference, Note, Group, StandaloneNote
 from auth_utils import init_default_user
-from routers import auth, references, notes, groups, export
+from routers import auth, references, notes, groups, export, standalone_notes
 
 logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout)
 logger = logging.getLogger("awesomeref")
@@ -71,6 +71,22 @@ with engine.begin() as conn:
         conn.execute(text("ALTER TABLE ref ADD COLUMN pdf_filename VARCHAR(255) DEFAULT NULL"))
         print("[migrate] 已添加 ref.pdf_filename 列")
 
+    # standalone_notes 表迁移: content → filename
+    result = conn.execute(text(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'standalone_notes' AND COLUMN_NAME = 'filename'"
+    ))
+    if result.scalar() == 0:
+        conn.execute(text("ALTER TABLE standalone_notes ADD COLUMN filename VARCHAR(255) NOT NULL DEFAULT ''"))
+        print("[migrate] 已添加 standalone_notes.filename 列")
+    result = conn.execute(text(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'standalone_notes' AND COLUMN_NAME = 'content'"
+    ))
+    if result.scalar() > 0:
+        conn.execute(text("ALTER TABLE standalone_notes DROP COLUMN content"))
+        print("[migrate] 已移除 standalone_notes.content 列")
+
 # 初始化默认用户
 db = SessionLocal()
 try:
@@ -84,6 +100,7 @@ app.include_router(references.router, prefix="/api", tags=["references"])
 app.include_router(notes.router, prefix="/api", tags=["notes"])
 app.include_router(groups.router, prefix="/api", tags=["groups"])
 app.include_router(export.router, prefix="/api", tags=["export"])
+app.include_router(standalone_notes.router, prefix="/api", tags=["standalone-notes"])
 
 # 生产模式：服务前端静态文件
 dist_dir = Path(__file__).parent.parent / "awesome_ref_frontend" / "dist"

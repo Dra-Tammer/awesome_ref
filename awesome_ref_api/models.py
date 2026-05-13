@@ -21,6 +21,7 @@ class User(Base):
 
     references = relationship("Reference", back_populates="user", cascade="all, delete-orphan")
     notes = relationship("Note", back_populates="user", cascade="all, delete-orphan")
+    standalone_notes = relationship("StandaloneNote", back_populates="user", cascade="all, delete-orphan")
     groups = relationship("Group", back_populates="user", cascade="all, delete-orphan")
 
 
@@ -77,3 +78,16 @@ class Note(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="notes")
+
+
+class StandaloneNote(Base):
+    __tablename__ = "standalone_notes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(200), default="无标题笔记")
+    filename = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="standalone_notes")

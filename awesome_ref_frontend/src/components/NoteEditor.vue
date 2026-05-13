@@ -1,7 +1,8 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { useNotes } from '../composables/useNotes.js'
 import { useReferences } from '../composables/useReferences.js'
+import { useToast } from '../composables/useToast.js'
 import { highlightText } from '../utils/highlight.js'
 
 const props = defineProps({
@@ -10,12 +11,16 @@ const props = defineProps({
 
 const { getNote, saveNote } = useNotes()
 const { searchQuery } = useReferences()
+const { showToast } = useToast()
 
 const content = ref('')
 const editing = ref(false)
 const saving = ref(false)
 const saved = ref(false)
 const updatedAt = ref('')
+let saveTimer = null
+
+onBeforeUnmount(() => { if (saveTimer) clearTimeout(saveTimer) })
 
 watch(() => props.refId, (id) => {
   const note = getNote(id)
@@ -36,7 +41,11 @@ async function onSave() {
     updatedAt.value = note.updatedAt
     saved.value = true
     editing.value = false
-    setTimeout(() => { saved.value = false }, 2000)
+    showToast('笔记已保存')
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = setTimeout(() => { saved.value = false }, 2000)
+  } else {
+    showToast('保存失败', 'error')
   }
   saving.value = false
 }

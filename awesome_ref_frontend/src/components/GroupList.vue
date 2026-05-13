@@ -5,7 +5,7 @@ import { useReferences } from '../composables/useReferences.js'
 import { useToast } from '../composables/useToast.js'
 import ConfirmDialog from './ConfirmDialog.vue'
 
-const { groups, addGroup, deleteGroup, renameGroup } = useGroups()
+const { groups, addGroup, deleteGroup, renameGroup, loadGroups } = useGroups()
 const { activeGroupId, setActiveGroup, references, trashCount, loadTrash, recentRefs, selectById } = useReferences()
 const { showToast } = useToast()
 
@@ -83,17 +83,20 @@ function onClickRecent(refId) {
   setActiveGroup('all')
   selectById(refId)
 }
+
 </script>
 
 <template>
   <div class="group-panel">
     <div class="group-header">
       <span class="group-title">分组</span>
-      <button class="btn-add-group" @click="showForm = !showForm" title="新建分组">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-      </button>
+      <div class="group-header-actions">
+        <button class="btn-add-group" @click="showForm = !showForm" title="新建分组">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div v-if="showForm" class="group-form">

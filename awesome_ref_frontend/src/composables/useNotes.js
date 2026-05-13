@@ -36,5 +36,26 @@ export function useNotes() {
   function hasNote(refId) { return !!(notes.value[refId]?.content) }
   function resetNotes() { notes.value = {} }
 
-  return { notes, loadNotes, saveNote, getNote, hasNote, resetNotes }
+  async function uploadNoteImage(file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const res = await fetch('/api/notes/images', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: formData,
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || '图片上传失败')
+      }
+      const data = await res.json()
+      return data.url
+    } catch (e) {
+      console.error('Failed to upload image:', e)
+      throw e
+    }
+  }
+
+  return { notes, loadNotes, saveNote, getNote, hasNote, resetNotes, uploadNoteImage }
 }
