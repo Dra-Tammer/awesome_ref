@@ -4,7 +4,7 @@ import { useStandaloneNotes } from '../composables/useStandaloneNotes.js'
 import { useToast } from '../composables/useToast.js'
 import ConfirmDialog from './ConfirmDialog.vue'
 
-const { notes, selectedNote, createNote, deleteNote, selectNote, updateNote, isDuplicateTitle } = useStandaloneNotes()
+const { notes, selectedNote, createNote, deleteNote, selectNote, updateNote, isDuplicateTitle, togglePin, sortMode, setSortMode } = useStandaloneNotes()
 const { showToast } = useToast()
 
 const searchQuery = ref('')
@@ -18,6 +18,19 @@ const renameTarget = ref(null)
 const renameTitle = ref('')
 const renameInputRef = ref(null)
 function setRenameRef(el) { renameInputRef.value = el }
+
+// 排序菜单
+const showSortMenu = ref(false)
+const sortMenuRef = ref(null)
+const sortLabel = { updated: '更新时间', created: '创建时间', title: '标题' }
+
+function onSortMenuClickOutside(e) {
+  if (sortMenuRef.value && !sortMenuRef.value.contains(e.target)) {
+    showSortMenu.value = false
+  }
+}
+onMounted(() => document.addEventListener('mousedown', onSortMenuClickOutside))
+onBeforeUnmount(() => document.removeEventListener('mousedown', onSortMenuClickOutside))
 
 watch(showTitleModal, (v) => {
   if (v) nextTick(() => titleInputRef.value?.focus())
@@ -123,6 +136,21 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
     <div class="list-header">
       <span class="list-title">笔记</span>
       <div class="list-header-right">
+        <div class="sort-menu-wrapper" ref="sortMenuRef">
+          <button class="btn-sort" @click="showSortMenu = !showSortMenu" title="排序">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="6" x2="16" y2="6"/><line x1="4" y1="12" x2="13" y2="12"/><line x1="4" y1="18" x2="10" y2="18"/>
+            </svg>
+            <span class="btn-sort-label">{{ sortLabel[sortMode] }}</span>
+          </button>
+          <Transition name="dropdown">
+            <div v-if="showSortMenu" class="sort-dropdown">
+              <button class="sort-dropdown-item" :class="{ active: sortMode === 'updated' }" @click="setSortMode('updated'); showSortMenu = false">更新时间</button>
+              <button class="sort-dropdown-item" :class="{ active: sortMode === 'created' }" @click="setSortMode('created'); showSortMenu = false">创建时间</button>
+              <button class="sort-dropdown-item" :class="{ active: sortMode === 'title' }" @click="setSortMode('title'); showSortMenu = false">标题</button>
+            </div>
+          </Transition>
+        </div>
         <button class="btn-sort" @click="onCreateNote" title="新建笔记">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -158,7 +186,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
           v-for="note in filteredNotes"
           :key="note.id"
           class="note-list-card"
-          :class="{ active: selectedNote?.id === note.id }"
+          :class="{ active: selectedNote?.id === note.id, pinned: note.pinned }"
           @click="onClickNote(note)"
         >
           <div v-if="renameTarget === note.id" class="note-list-card-rename" @click.stop>
@@ -178,6 +206,11 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
           <div class="note-list-card-row">
             <span class="note-list-card-date">{{ formatDate(note.updatedAt) }}</span>
             <div class="note-list-card-actions">
+              <button class="btn-note-action" :class="{ 'btn-note-pinned': note.pinned }" @click.stop="togglePin(note.id)" :title="note.pinned ? '取消置顶' : '置顶'">
+                <svg width="12" height="12" viewBox="0 0 24 24" :fill="note.pinned ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/>
+                </svg>
+              </button>
               <button class="btn-note-action" @click.stop="startRename(note)" title="重命名">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import case
 
 from database import get_db
 from models import StandaloneNote, User
@@ -51,7 +52,12 @@ def _write_file(filepath: str, content: str):
 
 @router.get("/standalone-notes")
 def list_notes(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    rows = db.query(StandaloneNote).filter(StandaloneNote.user_id == user.id).order_by(StandaloneNote.updated_at.desc()).all()
+    rows = (
+        db.query(StandaloneNote)
+        .filter(StandaloneNote.user_id == user.id)
+        .order_by(StandaloneNote.pinned.desc(), StandaloneNote.updated_at.desc())
+        .all()
+    )
     result = []
     for n in rows:
         if not n.filename:
@@ -62,6 +68,7 @@ def list_notes(user: User = Depends(get_current_user), db: Session = Depends(get
             "id": n.id,
             "title": n.title,
             "content": content,
+            "pinned": bool(n.pinned),
             "createdAt": n.created_at.isoformat() if n.created_at else "",
             "updatedAt": n.updated_at.isoformat() if n.updated_at else "",
         })
@@ -98,6 +105,7 @@ def create_note(req: NoteCreateRequest, user: User = Depends(get_current_user), 
         "id": note.id,
         "title": note.title,
         "content": "",
+        "pinned": False,
         "createdAt": note.created_at.isoformat(),
         "updatedAt": note.updated_at.isoformat(),
     }
@@ -151,9 +159,25 @@ def update_note(note_id: int, req: NoteUpdateRequest, user: User = Depends(get_c
         "id": note.id,
         "title": note.title,
         "content": content,
+        "pinned": bool(note.pinned),
         "createdAt": note.created_at.isoformat(),
         "updatedAt": note.updated_at.isoformat(),
     }
+
+
+class NotePinRequest(BaseModel):
+    pinned: bool
+
+
+@router.put("/standalone-notes/{note_id}/pin")
+def toggle_pin(note_id: int, req: NotePinRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    note = db.query(StandaloneNote).filter(StandaloneNote.id == note_id, StandaloneNote.user_id == user.id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="笔记不存在")
+    note.pinned = 1 if req.pinned else 0
+    db.commit()
+    db.refresh(note)
+    return {"id": note.id, "pinned": bool(note.pinned)}
 
 
 @router.delete("/standalone-notes/{note_id}")

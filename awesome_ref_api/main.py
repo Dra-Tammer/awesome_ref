@@ -87,6 +87,14 @@ with engine.begin() as conn:
         conn.execute(text("ALTER TABLE standalone_notes DROP COLUMN content"))
         print("[migrate] 已移除 standalone_notes.content 列")
 
+    result = conn.execute(text(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'standalone_notes' AND COLUMN_NAME = 'pinned'"
+    ))
+    if result.scalar() == 0:
+        conn.execute(text("ALTER TABLE standalone_notes ADD COLUMN pinned INT DEFAULT 0"))
+        print("[migrate] 已添加 standalone_notes.pinned 列")
+
 # 初始化默认用户
 db = SessionLocal()
 try:

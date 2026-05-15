@@ -4,6 +4,7 @@ import { useAuth } from './useAuth.js'
 const notes = ref([])
 const selectedNote = ref(null)
 const hasUnsavedChanges = ref(false)
+const sortMode = ref('updated') // 'updated' | 'created' | 'title'
 let _saveCallback = null
 
 export function useStandaloneNotes() {
@@ -114,9 +115,44 @@ export function useStandaloneNotes() {
     )
   }
 
+  async function togglePin(id) {
+    const note = notes.value.find(n => n.id === id)
+    if (!note) return
+    const newPinned = !note.pinned
+    try {
+      const res = await fetch(`/api/standalone-notes/${id}/pin`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ pinned: newPinned }),
+      })
+      if (!res.ok) return
+      note.pinned = newPinned
+      // re-sort in place: pinned first, then by sortMode
+      notes.value.sort((a, b) => {
+        if (a.pinned !== b.pinned) return b.pinned ? 1 : -1
+        if (sortMode.value === 'title') return a.title.localeCompare(b.title)
+        const key = sortMode.value === 'created' ? 'createdAt' : 'updatedAt'
+        return (b[key] || '').localeCompare(a[key] || '')
+      })
+    } catch (e) {
+      console.error('Failed to toggle pin:', e)
+    }
+  }
+
+  function setSortMode(mode) {
+    sortMode.value = mode
+    notes.value.sort((a, b) => {
+      if (a.pinned !== b.pinned) return b.pinned ? 1 : -1
+      if (mode === 'title') return a.title.localeCompare(b.title)
+      const key = mode === 'created' ? 'createdAt' : 'updatedAt'
+      return (b[key] || '').localeCompare(a[key] || '')
+    })
+  }
+
   return {
-    notes, selectedNote, hasUnsavedChanges,
+    notes, selectedNote, hasUnsavedChanges, sortMode,
     loadNotes, createNote, updateNote, deleteNote, uploadImage,
     selectNote, resetNotes, registerSaveCallback, isDuplicateTitle,
+    togglePin, setSortMode,
   }
 }

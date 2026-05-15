@@ -87,6 +87,7 @@ class StandaloneNote(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String(200), default="无标题笔记")
     filename = Column(String(255), nullable=False)
+    pinned = Column(Integer, default=0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
