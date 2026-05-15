@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, nextTick } from 'vue'
 import { useAuth } from './composables/useAuth.js'
 import { useReferences } from './composables/useReferences.js'
 import { useNotes } from './composables/useNotes.js'
@@ -18,7 +18,7 @@ import DropOverlay from './components/DropOverlay.vue'
 
 const checking = ref(true)
 const { isLoggedIn, tryRestoreSession } = useAuth()
-const { loadReferences, loadTrash, addReferences, setNotes, resetAll, selectedReference, selectedIndex, filteredReferences, selectByIndex } = useReferences()
+const { loadReferences, loadTrash, addReferences, setNotes, resetAll, selectedReference, selectedIndex, filteredReferences, selectByIndex, selectById, setActiveGroup } = useReferences()
 const { loadNotes, notes, resetNotes } = useNotes()
 const { loadGroups, resetGroups } = useGroups()
 const { notes: standaloneNotes, loadNotes: loadStandaloneNotes, resetNotes: resetStandaloneNotes, selectedNote: selectedStandaloneNote, selectNote: selectStandaloneNote } = useStandaloneNotes()
@@ -207,6 +207,20 @@ async function handleDropFiles(files) {
   }
   if (allRefs.length > 0) await addReferences(allRefs)
 }
+
+function handleGlobalNavigate(item) {
+  if (item.type === 'ref') {
+    viewMode.value = 'references'
+    setActiveGroup('all')
+    nextTick(() => selectById(item.id))
+  } else if (item.type === 'note') {
+    viewMode.value = 'notes'
+    nextTick(() => selectStandaloneNote(item.raw))
+  } else if (item.type === 'group') {
+    viewMode.value = 'references'
+    setActiveGroup(item.id)
+  }
+}
 </script>
 
 <template>
@@ -222,7 +236,7 @@ async function handleDropFiles(files) {
     <LoginPage v-else-if="!isLoggedIn" key="login" />
 
     <div v-else class="app" key="main">
-      <Toolbar :viewMode="viewMode" @update:viewMode="viewMode = $event" />
+      <Toolbar :viewMode="viewMode" @update:viewMode="viewMode = $event" @navigate="handleGlobalNavigate" />
       <div class="main">
         <aside
           class="side-panel left-panel"

@@ -7,6 +7,7 @@ import { useReferences } from '../composables/useReferences.js'
 import { useGroups } from '../composables/useGroups.js'
 import { useNotes } from '../composables/useNotes.js'
 import ReferenceEditor from './ReferenceEditor.vue'
+import GlobalSearch from './GlobalSearch.vue'
 
 const { logout, username, changePassword, getHeaders } = useAuth()
 const { theme, toggle: toggleTheme } = useTheme()
@@ -18,7 +19,9 @@ const { loadNotes } = useNotes()
 const props = defineProps({
   viewMode: { type: String, default: 'references' },
 })
-const emit = defineEmits(['update:viewMode'])
+const emit = defineEmits(['update:viewMode', 'navigate'])
+
+const showSearch = ref(false)
 
 const showMenu = ref(false)
 const menuRef = ref(null)
@@ -227,6 +230,11 @@ function onExportDOCX() { doExport('docx', 'docx', 'application/vnd.openxmlforma
           <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
         </svg>
       </button>
+      <button class="btn-theme-toggle" @click="showSearch = true" title="全局搜索">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
       <div class="menu-wrapper" ref="menuRef">
         <button class="btn-menu" @click="toggleMenu" title="菜单">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -411,6 +419,12 @@ function onExportDOCX() { doExport('docx', 'docx', 'application/vnd.openxmlforma
       </div>
     </Transition>
   </Teleport>
+
+  <GlobalSearch
+    :visible="showSearch"
+    @close="showSearch = false"
+    @navigate="(item) => emit('navigate', item)"
+  />
 
   <ReferenceEditor v-if="showNewRefModal" @close="showNewRefModal = false" />
 </template>
