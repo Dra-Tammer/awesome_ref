@@ -99,7 +99,6 @@ function patchEditorBg() {
     document.querySelectorAll('.note-editor-body .md-editor').forEach(el => {
       el.style.setProperty('background-color', 'transparent', 'important')
       el.style.setProperty('border', 'none', 'important')
-      el.style.setProperty('--md-bk-color', 'transparent')
       el.querySelectorAll('.md-editor-toolbar-wrapper, .md-editor-content, .md-editor-input-wrapper, .cm-editor, .cm-scroller, .cm-content, .cm-gutters').forEach(c => {
         c.style.setProperty('background-color', 'transparent', 'important')
       })

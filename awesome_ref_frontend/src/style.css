@@ -2978,6 +2978,42 @@ html, body {
   background-color: transparent !important;
 }
 
+/* 工具栏下拉菜单 */
+.note-editor-body .md-editor .md-editor-dropdown {
+  background-color: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+.note-editor-body .md-editor .md-editor-menu {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+.note-editor-body .md-editor .md-editor-menu-item:hover {
+  background-color: var(--bg) !important;
+}
+
+/* CodeMirror 自动补全提示 */
+.note-editor-body .md-editor .cm-tooltip {
+  background-color: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+.note-editor-body .md-editor .cm-tooltip-autocomplete > ul {
+  background-color: var(--surface) !important;
+}
+.note-editor-body .md-editor .cm-tooltip-autocomplete > ul li {
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+}
+.note-editor-body .md-editor .cm-tooltip-autocomplete > ul li[aria-selected] {
+  background-color: var(--bg) !important;
+}
+.note-editor-body .md-editor .cm-tooltip-autocomplete .cm-completionInfo {
+  background-color: var(--bg) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+
 /* Note mode transition */
 .note-mode-enter-active {
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
