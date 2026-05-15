@@ -2708,7 +2708,6 @@ html, body {
 .note-editor-preview {
   flex: 1;
   overflow-y: auto;
-  cursor: pointer;
   min-height: 200px;
   padding: 28px 40px 48px;
   transition: background 0.2s ease;

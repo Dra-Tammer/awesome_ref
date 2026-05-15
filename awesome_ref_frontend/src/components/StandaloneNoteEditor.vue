@@ -157,7 +157,7 @@ watch(editing, (v) => { if (v) patchEditorBg() })
     </div>
 
     <Transition name="note-mode" mode="out-in">
-      <div v-if="!editing" key="preview" class="note-editor-preview" @click="onEdit">
+      <div v-if="!editing" key="preview" class="note-editor-preview">
         <MdPreview v-if="content" :modelValue="content" :theme="editorTheme" previewOnly />
         <div v-else class="note-editor-empty">点击开始编辑...</div>
       </div>
