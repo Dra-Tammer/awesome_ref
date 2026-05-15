@@ -4,7 +4,7 @@ import { useStandaloneNotes } from '../composables/useStandaloneNotes.js'
 import { useToast } from '../composables/useToast.js'
 import ConfirmDialog from './ConfirmDialog.vue'
 
-const { notes, selectedNote, createNote, deleteNote, selectNote } = useStandaloneNotes()
+const { notes, selectedNote, createNote, deleteNote, selectNote, isDuplicateTitle } = useStandaloneNotes()
 const { showToast } = useToast()
 
 const searchQuery = ref('')
@@ -49,6 +49,10 @@ function onCreateNote() {
 
 async function onConfirmCreate() {
   const title = newNoteTitle.value.trim() || '无标题笔记'
+  if (isDuplicateTitle(title)) {
+    showToast('已存在同名笔记', 'error')
+    return
+  }
   showTitleModal.value = false
   await createNote(title)
 }

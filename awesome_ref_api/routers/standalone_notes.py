@@ -74,6 +74,12 @@ class NoteCreateRequest(BaseModel):
 
 @router.post("/standalone-notes")
 def create_note(req: NoteCreateRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    existing = db.query(StandaloneNote).filter(
+        StandaloneNote.user_id == user.id,
+        StandaloneNote.title == req.title
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="已存在同名笔记")
     now = datetime.now(timezone.utc)
     # 先创建 DB 记录拿到 id，再用 id 生成文件名
     note = StandaloneNote(user_id=user.id, title=req.title, filename="", created_at=now, updated_at=now)
@@ -117,6 +123,14 @@ def update_note(note_id: int, req: NoteUpdateRequest, user: User = Depends(get_c
 
     # 更新标题 → 重命名文件
     if req.title is not None:
+        if req.title != note.title:
+            dup = db.query(StandaloneNote).filter(
+                StandaloneNote.user_id == user.id,
+                StandaloneNote.title == req.title,
+                StandaloneNote.id != note_id
+            ).first()
+            if dup:
+                raise HTTPException(status_code=409, detail="已存在同名笔记")
         note.title = req.title
         new_filename = _safe_filename(req.title, note.id)
         new_path = os.path.join(NOTES_DIR, new_filename)

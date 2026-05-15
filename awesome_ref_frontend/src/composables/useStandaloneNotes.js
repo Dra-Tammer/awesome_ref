@@ -3,6 +3,8 @@ import { useAuth } from './useAuth.js'
 
 const notes = ref([])
 const selectedNote = ref(null)
+const hasUnsavedChanges = ref(false)
+let _saveCallback = null
 
 export function useStandaloneNotes() {
   const { getHeaders } = useAuth()
@@ -90,7 +92,10 @@ export function useStandaloneNotes() {
     }
   }
 
-  function selectNote(note) {
+  async function selectNote(note) {
+    if (hasUnsavedChanges.value && _saveCallback) {
+      await _saveCallback()
+    }
     selectedNote.value = note
   }
 
@@ -99,5 +104,19 @@ export function useStandaloneNotes() {
     selectedNote.value = null
   }
 
-  return { notes, selectedNote, loadNotes, createNote, updateNote, deleteNote, uploadImage, selectNote, resetNotes }
+  function registerSaveCallback(fn) {
+    _saveCallback = fn
+  }
+
+  function isDuplicateTitle(titleText, excludeId = null) {
+    return notes.value.some(n =>
+      n.title === titleText && n.id !== excludeId
+    )
+  }
+
+  return {
+    notes, selectedNote, hasUnsavedChanges,
+    loadNotes, createNote, updateNote, deleteNote, uploadImage,
+    selectNote, resetNotes, registerSaveCallback, isDuplicateTitle,
+  }
 }
