@@ -94,6 +94,12 @@ async function onSave() {
     showToast('笔记已保存')
     if (saveTimer) clearTimeout(saveTimer)
     saveTimer = setTimeout(() => { saved.value = false }, 2000)
+  } else if (result === 'nochange') {
+    editing.value = false
+    saved.value = true
+    showToast('已是最新')
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = setTimeout(() => { saved.value = false }, 2000)
   } else if (result === 'failed') {
     showToast('保存失败', 'error')
   }
