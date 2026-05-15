@@ -12,6 +12,7 @@ import GroupList from './components/GroupList.vue'
 import ReferenceList from './components/ReferenceList.vue'
 import ReferenceDetail from './components/ReferenceDetail.vue'
 import NoteList from './components/NoteList.vue'
+import NoteOutline from './components/NoteOutline.vue'
 import StandaloneNoteEditor from './components/StandaloneNoteEditor.vue'
 import DropOverlay from './components/DropOverlay.vue'
 
@@ -29,10 +30,11 @@ const leftWidth = ref(240)
 const leftCollapsed = ref(false)
 const leftPrevWidth = ref(240)
 
-// Right sidebar (ReferenceDetail)
+// Right sidebar (ReferenceDetail or Notes outline)
 const rightWidth = ref(780)
 const rightCollapsed = ref(false)
 const rightPrevWidth = ref(780)
+const rightWidthNotes = 360
 
 const resizingLeft = ref(false)
 const resizingRight = ref(false)
@@ -88,7 +90,7 @@ function onRightHandleDown(e) {
     resizingRight.value = true
     if (rightRaf) cancelAnimationFrame(rightRaf)
     rightRaf = requestAnimationFrame(() => {
-      const minW = viewMode.value === 'notes' ? 180 : 320
+      const minW = viewMode.value === 'notes' ? 240 : 320
       rightWidth.value = Math.max(minW, Math.min(800, startW + startX - ev.clientX))
     })
   }
@@ -151,8 +153,8 @@ watch(viewMode, (mode) => {
       selectStandaloneNote(standaloneNotes.value[0])
     }
     rightPrevWidthForNotes.value = rightWidth.value
-    rightWidth.value = leftWidth.value
-    rightPrevWidth.value = leftWidth.value
+    rightWidth.value = rightWidthNotes
+    rightPrevWidth.value = rightWidthNotes
   } else {
     rightWidth.value = rightPrevWidthForNotes.value
     rightPrevWidth.value = rightPrevWidthForNotes.value
@@ -265,17 +267,7 @@ async function handleDropFiles(files) {
         >
           <div class="panel-content" :class="{ hidden: rightCollapsed }">
             <ReferenceDetail v-if="viewMode === 'references'" />
-            <div v-if="viewMode === 'notes'" class="detail-panel">
-              <div class="detail-empty">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-                </svg>
-                <h2>独立笔记</h2>
-                <p>在左侧创建和管理笔记<br>支持 Markdown 编辑和图片插入</p>
-              </div>
-            </div>
+            <NoteOutline v-if="viewMode === 'notes'" />
           </div>
         </aside>
       </div>

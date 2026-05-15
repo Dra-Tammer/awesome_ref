@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted, nextTick } from 'vue'
 import { MdEditor, MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { useStandaloneNotes } from '../composables/useStandaloneNotes.js'
@@ -17,6 +17,20 @@ const saving = ref(false)
 const saved = ref(false)
 let saveTimer = null
 let lastNoteId = null
+
+const wordCount = computed(() => {
+  if (!content.value) return 0
+  const text = content.value.replace(/[#*`~>\[\]()!|_\-]/g, '').trim()
+  return text ? text.replace(/\s+/g, '').length : 0
+})
+
+const formattedUpdatedAt = computed(() => {
+  if (!selectedNote.value?.updatedAt) return ''
+  return new Date(selectedNote.value.updatedAt).toLocaleString('zh-CN', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  })
+})
 
 watch(selectedNote, (note, oldNote) => {
   const newId = note?.id ?? null
@@ -79,39 +93,64 @@ async function onUploadImg(files, callback) {
 }
 
 const editorTheme = computed(() => theme.value === 'dark' ? 'dark' : 'light')
+
+function patchEditorBg() {
+  setTimeout(() => {
+    document.querySelectorAll('.note-editor-body .md-editor').forEach(el => {
+      el.style.setProperty('background-color', 'transparent', 'important')
+      el.style.setProperty('border', 'none', 'important')
+      el.style.setProperty('--md-bk-color', 'transparent')
+      el.querySelectorAll('.md-editor-toolbar-wrapper, .md-editor-content, .md-editor-input-wrapper, .cm-editor, .cm-scroller, .cm-content, .cm-gutters').forEach(c => {
+        c.style.setProperty('background-color', 'transparent', 'important')
+      })
+    })
+  }, 50)
+}
+watch(editing, (v) => { if (v) patchEditorBg() })
 </script>
 
 <template>
-  <div v-if="!selectedNote" class="detail-panel">
+  <div v-if="!selectedNote" class="detail-panel note-editor-panel">
     <div class="detail-empty">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-      </svg>
-      <h2>笔记</h2>
-      <p>选择一条笔记开始编辑</p>
+      <div class="note-empty-icon">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.25">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+      </div>
+      <h2>开始书写</h2>
+      <p>从左侧列表选择一篇笔记查看或编辑</p>
     </div>
   </div>
 
   <div v-else class="detail-panel note-editor-panel">
     <div class="note-editor-header">
       <div class="note-editor-top">
-        <input
-          v-if="editing"
-          class="note-title-input"
-          v-model="title"
-          placeholder="笔记标题..."
-        />
-        <h2 v-else class="note-title-display">{{ title || '无标题笔记' }}</h2>
+        <div class="note-editor-top-left">
+          <input
+            v-if="editing"
+            class="note-title-input"
+            v-model="title"
+            placeholder="笔记标题..."
+          />
+          <h2 v-else class="note-title-display">{{ title || '无标题笔记' }}</h2>
+          <div v-if="!editing && (formattedUpdatedAt || wordCount)" class="note-editor-meta">
+            <span v-if="formattedUpdatedAt" class="note-meta-item">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              修改于 {{ formattedUpdatedAt }}
+            </span>
+            <span class="note-meta-item note-meta-wordcount">{{ wordCount }} 字</span>
+          </div>
+        </div>
         <div class="note-editor-actions">
           <span v-if="saved" class="note-status saved">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             已保存
           </span>
           <button v-if="!editing" class="btn-edit-note" @click="onEdit" title="编辑笔记">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
             </svg>
+            <span>编辑</span>
           </button>
         </div>
       </div>
@@ -142,3 +181,5 @@ const editorTheme = computed(() => theme.value === 'dark' ? 'dark' : 'light')
     </Transition>
   </div>
 </template>
+
+
