@@ -239,8 +239,9 @@ function handleGlobalNavigate(item) {
 
     <div v-else class="app" key="main">
       <Toolbar :viewMode="viewMode" @update:viewMode="viewMode = $event" @navigate="handleGlobalNavigate" />
-      <ProfilePage v-if="viewMode === 'profile'" />
-      <div class="main" v-else>
+      <Transition name="view-switch" mode="out-in">
+        <ProfilePage v-if="viewMode === 'profile'" key="profile" />
+        <div class="main" v-else key="main">
         <aside
           class="side-panel left-panel"
           :class="{ collapsed: leftCollapsed, resizing: resizingLeft }"
@@ -288,6 +289,7 @@ function handleGlobalNavigate(item) {
           </div>
         </aside>
       </div>
+      </Transition>
       <DropOverlay v-if="viewMode === 'references'" :on-files="handleDropFiles" />
     </div>
   </Transition>
