@@ -197,7 +197,7 @@ function onExportDOCX() { doExport('docx', 'docx', 'application/vnd.openxmlforma
       </h1>
     </div>
     <div class="toolbar-center">
-      <span class="view-mode-indicator" :class="{ right: viewMode === 'notes' }"></span>
+      <span class="view-mode-indicator" :class="{ middle: viewMode === 'notes', right: viewMode === 'profile' }"></span>
       <button
         class="btn-view-mode"
         :class="{ active: viewMode === 'references' }"
@@ -219,6 +219,17 @@ function onExportDOCX() { doExport('docx', 'docx', 'application/vnd.openxmlforma
           <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
         </svg>
         笔记
+      </button>
+      <button
+        class="btn-view-mode"
+        :class="{ active: viewMode === 'profile' }"
+        @click="emit('update:viewMode', 'profile')"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        我的
       </button>
     </div>
     <div class="toolbar-right">

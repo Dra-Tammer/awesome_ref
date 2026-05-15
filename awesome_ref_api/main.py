@@ -16,7 +16,7 @@ from sqlalchemy import text
 from database import engine, SessionLocal, Base
 from models import User, Reference, Note, Group, StandaloneNote
 from auth_utils import init_default_user
-from routers import auth, references, notes, groups, export, standalone_notes
+from routers import auth, references, notes, groups, export, standalone_notes, stats
 
 logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout)
 logger = logging.getLogger("awesomeref")
@@ -101,6 +101,7 @@ app.include_router(notes.router, prefix="/api", tags=["notes"])
 app.include_router(groups.router, prefix="/api", tags=["groups"])
 app.include_router(export.router, prefix="/api", tags=["export"])
 app.include_router(standalone_notes.router, prefix="/api", tags=["standalone-notes"])
+app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
 
 # 生产模式：服务前端静态文件
 dist_dir = Path(__file__).parent.parent / "awesome_ref_frontend" / "dist"

@@ -15,6 +15,7 @@ import NoteList from './components/NoteList.vue'
 import NoteOutline from './components/NoteOutline.vue'
 import StandaloneNoteEditor from './components/StandaloneNoteEditor.vue'
 import DropOverlay from './components/DropOverlay.vue'
+import ProfilePage from './components/ProfilePage.vue'
 
 const checking = ref(true)
 const { isLoggedIn, tryRestoreSession } = useAuth()
@@ -23,7 +24,7 @@ const { loadNotes, notes, resetNotes } = useNotes()
 const { loadGroups, resetGroups } = useGroups()
 const { notes: standaloneNotes, loadNotes: loadStandaloneNotes, resetNotes: resetStandaloneNotes, selectedNote: selectedStandaloneNote, selectNote: selectStandaloneNote } = useStandaloneNotes()
 
-const viewMode = ref('references') // 'references' | 'notes'
+const viewMode = ref('references') // 'references' | 'notes' | 'profile'
 
 // Left sidebar (GroupList)
 const leftWidth = ref(240)
@@ -148,6 +149,7 @@ const rightPrevWidthForNotes = ref(780)
 
 // Auto-select first note when switching to notes mode
 watch(viewMode, (mode) => {
+  if (mode === 'profile') return
   if (mode === 'notes') {
     if (!selectedStandaloneNote.value && standaloneNotes.value.length > 0) {
       selectStandaloneNote(standaloneNotes.value[0])
@@ -237,7 +239,8 @@ function handleGlobalNavigate(item) {
 
     <div v-else class="app" key="main">
       <Toolbar :viewMode="viewMode" @update:viewMode="viewMode = $event" @navigate="handleGlobalNavigate" />
-      <div class="main">
+      <ProfilePage v-if="viewMode === 'profile'" />
+      <div class="main" v-else>
         <aside
           class="side-panel left-panel"
           :class="{ collapsed: leftCollapsed, resizing: resizingLeft }"
