@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useStandaloneNotes } from '../composables/useStandaloneNotes.js'
 import { useToast } from '../composables/useToast.js'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -17,6 +17,7 @@ const titleInputRef = ref(null)
 const renameTarget = ref(null)
 const renameTitle = ref('')
 const renameInputRef = ref(null)
+function setRenameRef(el) { renameInputRef.value = el }
 
 watch(showTitleModal, (v) => {
   if (v) nextTick(() => titleInputRef.value?.focus())
@@ -88,10 +89,8 @@ async function confirmRename() {
   if (!id) return
   const newTitle = renameTitle.value.trim()
   const original = notes.value.find(n => n.id === id)
-  if (!newTitle || newTitle === original?.title) {
-    renameTarget.value = null
-    return
-  }
+  renameTarget.value = null
+  if (!newTitle || newTitle === original?.title) return
   if (isDuplicateTitle(newTitle, id)) {
     showToast('已存在同名笔记', 'error')
     return
@@ -102,12 +101,21 @@ async function confirmRename() {
   } else {
     showToast('重命名失败', 'error')
   }
-  renameTarget.value = null
 }
 
 function cancelRename() {
   renameTarget.value = null
 }
+
+// 点击外部自动退出重命名
+function onDocumentClick(e) {
+  if (!renameTarget.value) return
+  if (!e.target.closest('.note-list-card-rename')) {
+    confirmRename()
+  }
+}
+onMounted(() => document.addEventListener('mousedown', onDocumentClick))
+onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick))
 </script>
 
 <template>
@@ -155,7 +163,7 @@ function cancelRename() {
         >
           <div v-if="renameTarget === note.id" class="note-list-card-rename" @click.stop>
             <input
-              ref="renameInputRef"
+              :ref="setRenameRef"
               class="note-list-rename-input"
               v-model="renameTitle"
               @keydown.enter.prevent="confirmRename"
