@@ -6,7 +6,7 @@ import { useStandaloneNotes } from '../composables/useStandaloneNotes.js'
 import { useTheme } from '../composables/useTheme.js'
 import { useToast } from '../composables/useToast.js'
 
-const { selectedNote, updateNote, uploadImage, hasUnsavedChanges, registerSaveCallback, isDuplicateTitle } = useStandaloneNotes()
+const { selectedNote, updateNote, uploadImage, hasUnsavedChanges, registerSaveCallback } = useStandaloneNotes()
 const { theme } = useTheme()
 const { showToast } = useToast()
 
@@ -17,11 +17,6 @@ const saving = ref(false)
 const saved = ref(false)
 let saveTimer = null
 let lastNoteId = null
-
-// 重命名状态
-const renaming = ref(false)
-const renameTitle = ref('')
-const renameInputRef = ref(null)
 
 // 守卫标志：selectedNote watch 同步数据时防止触发脏检测
 let syncingFromNote = false
@@ -60,7 +55,6 @@ watch(selectedNote, (note) => {
   editing.value = false
   saved.value = false
   hasUnsavedChanges.value = false
-  renaming.value = false
   nextTick(() => { syncingFromNote = false })
 }, { immediate: true })
 
@@ -110,40 +104,6 @@ function onCancel() {
     content.value = selectedNote.value.content || ''
   }
   editing.value = false
-}
-
-// ── 重命名 ──
-function startRename() {
-  renameTitle.value = title.value
-  renaming.value = true
-  nextTick(() => {
-    renameInputRef.value?.focus()
-    renameInputRef.value?.select()
-  })
-}
-
-async function confirmRename() {
-  const newTitle = renameTitle.value.trim()
-  if (!newTitle || newTitle === title.value) {
-    renaming.value = false
-    return
-  }
-  if (isDuplicateTitle(newTitle, selectedNote.value.id)) {
-    showToast('已存在同名笔记', 'error')
-    return
-  }
-  const updated = await updateNote(selectedNote.value.id, { title: newTitle })
-  if (updated) {
-    title.value = updated.title
-    showToast('标题已重命名')
-  } else {
-    showToast('重命名失败', 'error')
-  }
-  renaming.value = false
-}
-
-function cancelRename() {
-  renaming.value = false
 }
 
 // ── 图片上传 ──
@@ -196,36 +156,8 @@ onMounted(() => {
     <div class="note-editor-header">
       <div class="note-editor-top">
         <div class="note-editor-top-left">
-          <!-- 编辑模式：标题输入 -->
-          <input
-            v-if="editing"
-            class="note-title-input"
-            v-model="title"
-            placeholder="笔记标题..."
-          />
-          <!-- 预览模式：重命名 or 显示 -->
-          <template v-else>
-            <div v-if="renaming" class="note-rename-row">
-              <input
-                ref="renameInputRef"
-                class="note-title-input"
-                v-model="renameTitle"
-                placeholder="笔记标题..."
-                @keydown.enter.prevent="confirmRename"
-                @keydown.escape="cancelRename"
-                @blur="confirmRename"
-              />
-            </div>
-            <div v-else class="note-title-row">
-              <h2 class="note-title-display">{{ title || '无标题笔记' }}</h2>
-              <button class="btn-rename-note" @click="startRename" title="重命名">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                </svg>
-              </button>
-            </div>
-          </template>
-          <div v-if="!editing && !renaming && (formattedUpdatedAt || wordCount)" class="note-editor-meta">
+          <h2 class="note-title-display">{{ title || '无标题笔记' }}</h2>
+          <div v-if="!editing && (formattedUpdatedAt || wordCount)" class="note-editor-meta">
             <span v-if="formattedUpdatedAt" class="note-meta-item">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               修改于 {{ formattedUpdatedAt }}
@@ -238,7 +170,7 @@ onMounted(() => {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             已保存
           </span>
-          <button v-if="!editing && !renaming" class="btn-edit-note" @click="onEdit" title="编辑笔记">
+          <button v-if="!editing" class="btn-edit-note" @click="onEdit" title="编辑笔记">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
             </svg>

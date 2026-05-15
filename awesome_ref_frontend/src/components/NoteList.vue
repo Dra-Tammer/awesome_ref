@@ -4,7 +4,7 @@ import { useStandaloneNotes } from '../composables/useStandaloneNotes.js'
 import { useToast } from '../composables/useToast.js'
 import ConfirmDialog from './ConfirmDialog.vue'
 
-const { notes, selectedNote, createNote, deleteNote, selectNote, isDuplicateTitle } = useStandaloneNotes()
+const { notes, selectedNote, createNote, deleteNote, selectNote, updateNote, isDuplicateTitle } = useStandaloneNotes()
 const { showToast } = useToast()
 
 const searchQuery = ref('')
@@ -12,6 +12,11 @@ const deleteTarget = ref(null)
 const showTitleModal = ref(false)
 const newNoteTitle = ref('')
 const titleInputRef = ref(null)
+
+// 重命名状态
+const renameTarget = ref(null)
+const renameTitle = ref('')
+const renameInputRef = ref(null)
 
 watch(showTitleModal, (v) => {
   if (v) nextTick(() => titleInputRef.value?.focus())
@@ -54,7 +59,8 @@ async function onConfirmCreate() {
     return
   }
   showTitleModal.value = false
-  await createNote(title)
+  const note = await createNote(title)
+  if (note) showToast('笔记已创建')
 }
 
 function onClickNote(note) {
@@ -66,6 +72,41 @@ async function onConfirmDelete() {
   const ok = await deleteNote(deleteTarget.value.id)
   if (ok) showToast('笔记已删除')
   deleteTarget.value = null
+}
+
+function startRename(note) {
+  renameTarget.value = note.id
+  renameTitle.value = note.title
+  nextTick(() => {
+    renameInputRef.value?.focus()
+    renameInputRef.value?.select()
+  })
+}
+
+async function confirmRename() {
+  const id = renameTarget.value
+  if (!id) return
+  const newTitle = renameTitle.value.trim()
+  const original = notes.value.find(n => n.id === id)
+  if (!newTitle || newTitle === original?.title) {
+    renameTarget.value = null
+    return
+  }
+  if (isDuplicateTitle(newTitle, id)) {
+    showToast('已存在同名笔记', 'error')
+    return
+  }
+  const updated = await updateNote(id, { title: newTitle })
+  if (updated) {
+    showToast('标题已重命名')
+  } else {
+    showToast('重命名失败', 'error')
+  }
+  renameTarget.value = null
+}
+
+function cancelRename() {
+  renameTarget.value = null
 }
 </script>
 
@@ -112,15 +153,34 @@ async function onConfirmDelete() {
           :class="{ active: selectedNote?.id === note.id }"
           @click="onClickNote(note)"
         >
-          <div class="note-list-card-title">{{ note.title || '无标题笔记' }}</div>
-          <div v-if="getContentPreview(note.content)" class="note-list-card-preview">{{ getContentPreview(note.content) }}</div>
+          <div v-if="renameTarget === note.id" class="note-list-card-rename" @click.stop>
+            <input
+              ref="renameInputRef"
+              class="note-list-rename-input"
+              v-model="renameTitle"
+              @keydown.enter.prevent="confirmRename"
+              @keydown.escape="cancelRename"
+              @blur="confirmRename"
+            />
+          </div>
+          <template v-else>
+            <div class="note-list-card-title">{{ note.title || '无标题笔记' }}</div>
+            <div v-if="getContentPreview(note.content)" class="note-list-card-preview">{{ getContentPreview(note.content) }}</div>
+          </template>
           <div class="note-list-card-row">
             <span class="note-list-card-date">{{ formatDate(note.updatedAt) }}</span>
-            <button class="btn-note-delete" @click.stop="deleteTarget = note" title="删除笔记">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-              </svg>
-            </button>
+            <div class="note-list-card-actions">
+              <button class="btn-note-action" @click.stop="startRename(note)" title="重命名">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                </svg>
+              </button>
+              <button class="btn-note-action btn-note-delete" @click.stop="deleteTarget = note" title="删除笔记">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </template>
