@@ -342,69 +342,66 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
           </div>
         </section>
 
-        <!-- Most Annotated + Deep Insights -->
-        <div class="profile-two-col">
-          <!-- Most Annotated References -->
-          <section class="profile-section" v-if="stats.most_annotated && stats.most_annotated.length > 0">
-            <div class="profile-section-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-              </svg>
-              笔记最多的文献
+        <!-- Most Annotated References -->
+        <section class="profile-section" v-if="stats.most_annotated && stats.most_annotated.length > 0">
+          <div class="profile-section-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+            笔记最多的文献
+          </div>
+          <div class="ranking-list">
+            <div v-for="(item, i) in stats.most_annotated" :key="i" class="ranking-item">
+              <span class="ranking-rank">{{ i + 1 }}</span>
+              <span class="ranking-name" :title="item.title">{{ item.title }}</span>
+              <span class="ranking-count">{{ item.count }} 条</span>
             </div>
-            <div class="ranking-list">
-              <div v-for="(item, i) in stats.most_annotated" :key="i" class="ranking-item">
-                <span class="ranking-rank">{{ i + 1 }}</span>
-                <span class="ranking-name" :title="item.title">{{ item.title }}</span>
-                <span class="ranking-count">{{ item.count }} 条</span>
-              </div>
-            </div>
-          </section>
+          </div>
+        </section>
 
-          <!-- Deep Insights -->
-          <section class="profile-section">
-            <div class="profile-section-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-              </svg>
-              深入洞察
+        <!-- Deep Insights -->
+        <section class="profile-section">
+          <div class="profile-section-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            深入洞察
+          </div>
+          <div class="insight-grid">
+            <div class="insight-card">
+              <span class="insight-card-value">{{ stats.avg_authors }}</span>
+              <span class="insight-card-label">平均作者数 / 篇</span>
             </div>
-            <div class="insight-list">
-              <div class="insight-item">
-                <span class="insight-label">平均每篇文献作者数</span>
-                <span class="insight-value">{{ stats.avg_authors }} 人</span>
-              </div>
-              <div class="insight-item">
-                <span class="insight-label">带有摘要的文献</span>
-                <span class="insight-value">{{ stats.refs_with_abstract }} / {{ stats.total_references }}</span>
-              </div>
-              <div class="insight-item">
-                <span class="insight-label">带有 DOI 的文献</span>
-                <span class="insight-value">{{ stats.refs_with_doi }} / {{ stats.total_references }}</span>
-              </div>
-              <div class="insight-item" v-if="stats.trash_count > 0">
-                <span class="insight-label">回收站文献</span>
-                <span class="insight-value">{{ stats.trash_count }} 篇</span>
-              </div>
-              <div class="insight-item">
-                <span class="insight-label">PDF 文件占用</span>
-                <span class="insight-value">{{ stats.pdf_size_mb }} MB</span>
-              </div>
-              <div class="insight-item">
-                <span class="insight-label">笔记文件数</span>
-                <span class="insight-value">{{ stats.note_files }} 个</span>
-              </div>
-              <div class="insight-item">
-                <span class="insight-label">上传图片数</span>
-                <span class="insight-value">{{ stats.img_count }} 张</span>
-              </div>
-              <div class="insight-item" v-if="stats.year_span">
-                <span class="insight-label">文献年份跨度</span>
-                <span class="insight-value">{{ stats.year_span }}</span>
-              </div>
+            <div class="insight-card">
+              <span class="insight-card-value">{{ stats.refs_with_abstract }}</span>
+              <span class="insight-card-label">有摘要的文献</span>
             </div>
-          </section>
-        </div>
+            <div class="insight-card">
+              <span class="insight-card-value">{{ stats.refs_with_doi }}</span>
+              <span class="insight-card-label">有 DOI 的文献</span>
+            </div>
+            <div class="insight-card">
+              <span class="insight-card-value">{{ stats.pdf_size_mb }} MB</span>
+              <span class="insight-card-label">PDF 存储占用</span>
+            </div>
+            <div class="insight-card">
+              <span class="insight-card-value">{{ stats.note_files }}</span>
+              <span class="insight-card-label">笔记文件数</span>
+            </div>
+            <div class="insight-card">
+              <span class="insight-card-value">{{ stats.img_count }}</span>
+              <span class="insight-card-label">上传图片数</span>
+            </div>
+            <div class="insight-card" v-if="stats.trash_count > 0">
+              <span class="insight-card-value">{{ stats.trash_count }}</span>
+              <span class="insight-card-label">回收站文献</span>
+            </div>
+            <div class="insight-card" v-if="stats.year_span">
+              <span class="insight-card-value">{{ stats.year_span }}</span>
+              <span class="insight-card-label">文献年份跨度</span>
+            </div>
+          </div>
+        </section>
       </template>
 
       <div v-else class="profile-section">

@@ -3758,35 +3758,40 @@ html, body {
   margin-left: auto;
 }
 
-/* Insight list */
-.insight-list {
+/* Insight grid */
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.insight-card {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.insight-item {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-radius: 6px;
-  transition: background 0.12s;
-}
-
-.insight-item:hover {
+  gap: 4px;
+  padding: 16px 12px;
   background: var(--bg);
+  border-radius: 10px;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.insight-label {
-  font-size: 13px;
+.insight-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.insight-card-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: 'Playfair Display', serif;
+}
+
+.insight-card-label {
+  font-size: 11px;
   color: var(--text-secondary);
-}
-
-.insight-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
+  text-align: center;
 }
 
 /* Section card */
@@ -4097,6 +4102,7 @@ html, body {
   .quick-stat-divider { display: none; }
   .quick-stat { min-width: 45%; }
   .profile-two-col { grid-template-columns: 1fr; }
+  .insight-grid { grid-template-columns: repeat(2, 1fr); }
   .profile-content { padding: 20px 16px 48px; }
   .profile-hero { padding: 32px 16px 24px; }
   .bar-label { width: 70px; font-size: 12px; }
