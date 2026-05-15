@@ -70,30 +70,31 @@ function onEdit() {
   editing.value = true
 }
 
-// 仅在有变更时保存，返回 updated 或 null
+// 仅在有变更时保存，返回 'saved' | 'nochange' | 'failed'
 async function saveIfDirty() {
-  if (!selectedNote.value || !hasUnsavedChanges.value) return null
+  if (!selectedNote.value || !hasUnsavedChanges.value) return 'nochange'
   saving.value = true
   const updated = await updateNote(selectedNote.value.id, {
     title: title.value,
     content: content.value,
   })
+  saving.value = false
   if (updated) {
     hasUnsavedChanges.value = false
+    return 'saved'
   }
-  saving.value = false
-  return updated
+  return 'failed'
 }
 
 async function onSave() {
-  const updated = await saveIfDirty()
-  if (updated) {
+  const result = await saveIfDirty()
+  if (result === 'saved') {
     saved.value = true
     editing.value = false
     showToast('笔记已保存')
     if (saveTimer) clearTimeout(saveTimer)
     saveTimer = setTimeout(() => { saved.value = false }, 2000)
-  } else if (selectedNote.value) {
+  } else if (result === 'failed') {
     showToast('保存失败', 'error')
   }
 }
