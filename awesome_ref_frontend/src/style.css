@@ -141,7 +141,6 @@ html, body {
 .toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 0 20px;
   height: 48px;
   background: var(--surface);
@@ -150,7 +149,13 @@ html, body {
   z-index: 10;
 }
 
-.toolbar-left { display: flex; align-items: center; gap: 10px; min-width: auto; }
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
 
 .btn-sidebar-toggle {
   display: flex;
@@ -275,7 +280,8 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: auto;
+  flex: 1;
+  min-width: 0;
   justify-content: flex-end;
 }
 
@@ -4087,9 +4093,7 @@ html, body {
 
 /* ========== Responsive ========== */
 @media (max-width: 768px) {
-  .toolbar { padding: 0 12px; gap: 6px; }
-  .toolbar-left { min-width: auto; }
-  .toolbar-right { min-width: auto; }
+  .toolbar { padding: 0 12px; }
   .toolbar-center { width: 228px; }
   .btn-view-mode { font-size: 12px; }
   .side-panel { width: 220px !important; }
