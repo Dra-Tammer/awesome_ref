@@ -141,6 +141,20 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
         <div class="profile-avatar">{{ (stats.username || '?')[0].toUpperCase() }}</div>
         <h2 class="profile-username">{{ stats.username }}</h2>
         <p class="profile-since">注册于 {{ formatDate(stats.registration_date) }}</p>
+        <div class="profile-hero-actions">
+          <button class="profile-action-btn" @click="openPwdModal" title="修改密码">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            修改密码
+          </button>
+          <button class="profile-action-btn" @click="showExportModal = true" title="导出数据">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            导出数据
+          </button>
+        </div>
       </section>
 
       <!-- Overview Cards -->
@@ -402,36 +416,6 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
           <p>还没有文献数据，添加一些文献后这里会展示有趣的统计信息</p>
         </div>
       </div>
-
-      <!-- Account Settings -->
-      <section class="profile-section">
-        <div class="profile-section-header">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-          账户设置
-        </div>
-        <div class="settings-actions">
-          <button class="settings-btn" @click="openPwdModal">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            <div class="settings-btn-text">
-              <span class="settings-btn-title">修改密码</span>
-              <span class="settings-btn-desc">更改您的账户登录密码</span>
-            </div>
-          </button>
-          <button class="settings-btn" @click="showExportModal = true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            <div class="settings-btn-text">
-              <span class="settings-btn-title">导出数据</span>
-              <span class="settings-btn-desc">导出文献、笔记和分组数据</span>
-            </div>
-          </button>
-        </div>
-      </section>
 
       <!-- Recent Activity -->
       <section class="profile-section" v-if="stats.recent_activity.length > 0">
