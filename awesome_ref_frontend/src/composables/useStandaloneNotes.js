@@ -29,6 +29,7 @@ export function useStandaloneNotes() {
       if (!res.ok) return null
       const note = await res.json()
       notes.value.unshift(note)
+      _sortNotes()
       selectedNote.value = note
       return note
     } catch (e) {
@@ -115,6 +116,15 @@ export function useStandaloneNotes() {
     )
   }
 
+  function _sortNotes() {
+    notes.value.sort((a, b) => {
+      if (a.pinned !== b.pinned) return b.pinned ? 1 : -1
+      if (sortMode.value === 'title') return a.title.localeCompare(b.title)
+      const key = sortMode.value === 'created' ? 'createdAt' : 'updatedAt'
+      return (b[key] || '').localeCompare(a[key] || '')
+    })
+  }
+
   async function togglePin(id) {
     const note = notes.value.find(n => n.id === id)
     if (!note) return
@@ -127,13 +137,7 @@ export function useStandaloneNotes() {
       })
       if (!res.ok) return
       note.pinned = newPinned
-      // re-sort in place: pinned first, then by sortMode
-      notes.value.sort((a, b) => {
-        if (a.pinned !== b.pinned) return b.pinned ? 1 : -1
-        if (sortMode.value === 'title') return a.title.localeCompare(b.title)
-        const key = sortMode.value === 'created' ? 'createdAt' : 'updatedAt'
-        return (b[key] || '').localeCompare(a[key] || '')
-      })
+      _sortNotes()
     } catch (e) {
       console.error('Failed to toggle pin:', e)
     }
@@ -141,12 +145,7 @@ export function useStandaloneNotes() {
 
   function setSortMode(mode) {
     sortMode.value = mode
-    notes.value.sort((a, b) => {
-      if (a.pinned !== b.pinned) return b.pinned ? 1 : -1
-      if (mode === 'title') return a.title.localeCompare(b.title)
-      const key = mode === 'created' ? 'createdAt' : 'updatedAt'
-      return (b[key] || '').localeCompare(a[key] || '')
-    })
+    _sortNotes()
   }
 
   return {
