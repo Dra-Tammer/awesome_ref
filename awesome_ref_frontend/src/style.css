@@ -91,7 +91,21 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 [data-theme="dark"] .note-empty-icon {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg);
+}
+
+[data-theme="dark"] .note-list-card:hover {
+  transform: translateX(2px);
+  background: var(--bg);
+}
+
+[data-theme="dark"] .note-list-card.pinned {
+  background: linear-gradient(90deg, var(--accent-light) 0%, transparent 100%);
+}
+
+[data-theme="dark"] .outline-item:hover {
+  background: var(--bg);
+  transform: translateX(2px);
 }
 [data-theme="dark"] .btn-restore:hover { background: rgba(52, 211, 153, 0.18); }
 [data-theme="dark"] .btn-permanent-delete:hover { background: rgba(248, 113, 113, 0.18); }
@@ -1007,14 +1021,14 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px 6px;
+  padding: 12px 16px 8px;
   flex-shrink: 0;
 }
 
 .list-header-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .list-title {
@@ -1028,19 +1042,20 @@ html, body {
 .list-search {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  margin: 0 8px 6px;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 0 10px 8px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  transition: border-color 0.15s, background 0.15s;
+  border-radius: 8px;
+  transition: all 0.2s;
   flex-shrink: 0;
 }
 
 .list-search:focus-within {
   border-color: var(--accent);
   background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
 .list-search svg {
@@ -1096,14 +1111,14 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  height: 26px;
-  padding: 0 8px;
+  height: 28px;
+  padding: 0 10px;
   background: none;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s;
   white-space: nowrap;
 }
 
@@ -1123,6 +1138,8 @@ html, body {
 .btn-sort:hover {
   color: var(--accent);
   border-color: var(--accent);
+  background: var(--accent-light);
+  transform: translateY(-1px);
 }
 
 .btn-sort-field {
@@ -1140,12 +1157,12 @@ html, body {
 
 .sort-dropdown {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   right: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   z-index: 50;
   overflow: hidden;
   padding: 4px;
@@ -1164,11 +1181,12 @@ html, body {
   cursor: pointer;
   border-radius: 6px;
   text-align: left;
-  transition: background 0.12s, color 0.12s;
+  transition: all 0.15s;
 }
 
 .sort-dropdown-item:hover {
   background: var(--bg);
+  transform: translateX(2px);
 }
 
 .sort-dropdown-item.active {
@@ -1181,8 +1199,9 @@ html, body {
   font-size: 11px;
   color: var(--text-secondary);
   background: var(--tag-bg);
-  padding: 1px 8px;
+  padding: 2px 10px;
   border-radius: 10px;
+  font-weight: 500;
 }
 
 /* ========== Resize Handle ========== */
@@ -1279,7 +1298,7 @@ html, body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 6px 8px;
+  padding: 4px 10px;
 }
 
 .ref-list::-webkit-scrollbar { width: 4px; }
@@ -1293,10 +1312,10 @@ html, body {
   height: 300px;
   color: var(--text-secondary);
   text-align: center;
-  padding: 20px;
+  padding: 24px;
 }
 
-.empty-state p { margin-top: 12px; font-size: 13px; line-height: 1.6; }
+.empty-state p { margin-top: 16px; font-size: 13px; line-height: 1.6; opacity: 0.7; }
 
 .ref-card {
   padding: 12px 14px;
@@ -2370,16 +2389,16 @@ html, body {
 
 /* ========== Note List Cards ========== */
 .note-list-card {
-  padding: 5px 14px;
-  border-radius: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
   cursor: pointer;
   border: 1px solid transparent;
   border-left: 3px solid transparent;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-bottom: 1px;
+  gap: 4px;
+  margin-bottom: 3px;
   animation: noteCardIn 0.2s ease both;
 }
 
@@ -2399,6 +2418,7 @@ html, body {
   background: var(--bg);
   border-color: var(--border);
   border-left-color: var(--border);
+  transform: translateX(2px);
 }
 
 .note-list-card.active {
@@ -2409,10 +2429,12 @@ html, body {
 
 .note-list-card.pinned {
   border-left-color: var(--accent);
+  background: linear-gradient(90deg, var(--accent-light) 0%, transparent 100%);
 }
 
 .note-list-card.pinned .note-list-card-title {
   color: var(--accent);
+  font-weight: 700;
 }
 
 .btn-note-pinned {
@@ -2427,6 +2449,7 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.4;
 }
 
 .note-list-card-preview {
@@ -2437,20 +2460,21 @@ html, body {
   white-space: nowrap;
   opacity: 0;
   max-height: 0;
-  line-height: 1.4;
-  transition: opacity 0.15s, max-height 0.15s;
+  line-height: 1.5;
+  transition: all 0.2s;
 }
 
 .note-list-card:hover .note-list-card-preview,
 .note-list-card.active .note-list-card-preview {
   opacity: 0.7;
-  max-height: 20px;
+  max-height: 24px;
 }
 
 .note-list-card-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-top: 2px;
 }
 
 .note-list-card-actions {
@@ -2462,6 +2486,7 @@ html, body {
 .note-list-card-date {
   font-size: 11px;
   color: var(--text-secondary);
+  opacity: 0.7;
 }
 
 .note-list-card-rename {
@@ -2474,10 +2499,15 @@ html, body {
   font-weight: 600;
   color: var(--text);
   background: var(--surface);
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  padding: 2px 6px;
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  padding: 4px 8px;
   outline: none;
+  transition: all 0.2s;
+}
+
+.note-list-rename-input:focus {
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
 }
 
 .btn-note-action {
@@ -2486,7 +2516,7 @@ html, body {
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 6px;
   opacity: 0;
   transition: all 0.15s;
 }
@@ -2496,14 +2526,20 @@ html, body {
   opacity: 1;
 }
 
+.note-list-card.pinned .btn-note-pinned {
+  opacity: 1;
+}
+
 .btn-note-action:hover {
   color: var(--text);
   background: var(--tag-bg);
+  transform: scale(1.1);
 }
 
 .btn-note-delete:hover {
   color: var(--danger);
   background: rgba(239, 68, 68, 0.1);
+  transform: scale(1.1);
 }
 
 /* ========== Note Title Modal ========== */
@@ -2520,11 +2556,12 @@ html, body {
 }
 
 .note-title-modal {
-  width: 380px;
+  width: 400px;
   background: var(--surface);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   overflow: hidden;
+  animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .note-title-modal-header {
@@ -2573,13 +2610,14 @@ html, body {
   outline: none;
   background: var(--surface);
   color: var(--text);
-  transition: border-color 0.2s;
+  transition: all 0.2s;
   width: 100%;
   box-sizing: border-box;
 }
 
 .note-title-modal-body input:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
 }
 
 [data-theme="dark"] .note-title-modal-body input:focus {
@@ -2634,6 +2672,7 @@ html, body {
   gap: 0;
   animation: noteEditorIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   background: var(--surface);
+  overflow: hidden;
 }
 
 @keyframes noteEditorIn {
@@ -2650,10 +2689,11 @@ html, body {
   justify-content: center;
   color: var(--text-secondary);
   padding: 48px 24px;
+  min-height: 300px;
 }
 
 .note-empty-icon {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2661,7 +2701,12 @@ html, body {
   height: 96px;
   border-radius: 50%;
   background: var(--bg);
-  transition: background 0.3s;
+  transition: all 0.3s;
+}
+
+.note-empty-icon:hover {
+  transform: scale(1.05);
+  background: var(--accent-light);
 }
 
 .note-editor-panel .detail-empty h2 {
@@ -2681,16 +2726,15 @@ html, body {
 
 /* Header */
 .note-editor-header {
-  padding: 28px 40px 20px;
+  padding: 20px 40px 16px;
   border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
 }
 
 .note-editor-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
   max-width: 860px;
   margin: 0 auto;
 }
@@ -2700,7 +2744,7 @@ html, body {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .note-title-input {
@@ -2718,7 +2762,7 @@ html, body {
 }
 
 .note-title-display {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
   font-family: 'Playfair Display', serif;
   color: var(--text);
@@ -2784,13 +2828,15 @@ html, body {
   flex: 1;
   overflow-y: auto;
   min-height: 200px;
-  padding: 28px 40px 48px;
+  padding-bottom: 48px;
   transition: background 0.2s ease;
   position: relative;
+  scrollbar-width: 5px;
 }
 
 .note-editor-preview::-webkit-scrollbar { width: 5px; }
 .note-editor-preview::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+.note-editor-preview::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 
 .note-editor-preview .md-editor {
   border: none;
@@ -2802,7 +2848,7 @@ html, body {
 }
 
 .note-editor-preview .md-editor-preview-wrapper {
-  padding: 0;
+  padding: 16px 40px 0;
   background: transparent !important;
 }
 
@@ -2821,20 +2867,20 @@ html, body {
 .note-editor-preview .md-editor-preview h1 {
   font-size: 24px;
   font-weight: 700;
-  margin: 40px 0 16px;
+  margin: 32px 0 16px;
   padding-bottom: 8px;
   border-bottom: 1.5px solid var(--border);
   font-family: 'Playfair Display', serif;
   letter-spacing: -0.015em;
   color: var(--text);
-  line-height: 1.3;
+  line-height: 1.5;
 }
-.note-editor-preview .md-editor-preview h1:first-child { margin-top: 0; }
+.note-editor-preview .md-editor-preview h1:first-child { margin-top: 10px; }
 
 .note-editor-preview .md-editor-preview h2 {
   font-size: 20px;
   font-weight: 600;
-  margin: 32px 0 12px;
+  margin: 28px 0 12px;
   font-family: 'Playfair Display', serif;
   letter-spacing: -0.01em;
   color: var(--text);
@@ -2844,7 +2890,7 @@ html, body {
 .note-editor-preview .md-editor-preview h3 {
   font-size: 17px;
   font-weight: 600;
-  margin: 24px 0 10px;
+  margin: 20px 0 10px;
   color: var(--text);
   line-height: 1.4;
 }
@@ -2854,22 +2900,22 @@ html, body {
 .note-editor-preview .md-editor-preview h6 {
   font-size: 15px;
   font-weight: 600;
-  margin: 20px 0 8px;
+  margin: 16px 0 8px;
   color: var(--text-secondary);
   line-height: 1.4;
 }
 
 /* Paragraph */
 .note-editor-preview .md-editor-preview p {
-  margin: 0 0 14px;
+  margin: 0 0 12px;
   line-height: 1.85;
 }
 
 /* Blockquote */
 .note-editor-preview .md-editor-preview blockquote {
   border-left: 3px solid var(--accent);
-  padding: 12px 20px;
-  margin: 20px 0;
+  padding: 10px 18px;
+  margin: 16px 0;
   background: var(--accent-light);
   border-radius: 0 6px 6px 0;
   color: var(--text);
@@ -2893,9 +2939,9 @@ html, body {
 .note-editor-preview .md-editor-preview pre {
   background: var(--bg);
   border-radius: 8px;
-  padding: 16px 20px;
+  padding: 14px 18px;
   overflow-x: auto;
-  margin: 18px 0;
+  margin: 16px 0;
   border: 1px solid var(--border);
 }
 
@@ -2912,7 +2958,7 @@ html, body {
 .note-editor-preview .md-editor-preview img {
   max-width: 100%;
   border-radius: 8px;
-  margin: 16px 0;
+  margin: 12px 0;
   box-shadow: var(--shadow-sm);
 }
 
@@ -2920,11 +2966,11 @@ html, body {
 .note-editor-preview .md-editor-preview ul,
 .note-editor-preview .md-editor-preview ol {
   padding-left: 24px;
-  margin: 8px 0 14px;
+  margin: 6px 0 12px;
 }
 
 .note-editor-preview .md-editor-preview li {
-  margin: 4px 0;
+  margin: 3px 0;
   line-height: 1.8;
 }
 .note-editor-preview .md-editor-preview li > p { margin: 4px 0; }
@@ -2952,7 +2998,7 @@ html, body {
 .note-editor-preview .md-editor-preview table {
   width: 100%;
   border-collapse: collapse;
-  margin: 18px 0;
+  margin: 14px 0;
   font-size: 14px;
   border-radius: 6px;
   overflow: hidden;
@@ -2960,7 +3006,7 @@ html, body {
 
 .note-editor-preview .md-editor-preview th,
 .note-editor-preview .md-editor-preview td {
-  padding: 10px 14px;
+  padding: 8px 12px;
   border: 1px solid var(--border);
   text-align: left;
   line-height: 1.6;
@@ -2976,14 +3022,14 @@ html, body {
 }
 
 .note-editor-preview .md-editor-preview tr:nth-child(even) td {
-  background: color-mix(in srgb, var(--bg) 50%, transparent);
+  background: var(--tag-bg);
 }
 
 /* Horizontal rule */
 .note-editor-preview .md-editor-preview hr {
   border: none;
   border-top: 1px solid var(--border);
-  margin: 32px 0;
+  margin: 24px 0;
 }
 
 /* Strong / emphasis */
@@ -3012,12 +3058,17 @@ html, body {
 .note-editor-empty {
   color: var(--text-secondary);
   font-size: 15px;
-  padding: 32px 0;
+  padding: 40px 40px;
   opacity: 0.4;
   font-style: italic;
   letter-spacing: 0.02em;
   max-width: 860px;
   margin: 0 auto;
+  text-align: center;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Editor body */
@@ -3027,6 +3078,7 @@ html, body {
   flex-direction: column;
   min-height: 0;
   padding: 16px 40px 20px;
+  overflow-y: auto;
 }
 
 .note-editor-body .md-editor {
@@ -3188,6 +3240,8 @@ html, body {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--accent-light);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
 }
 
 /* ========== Note Outline Panel ========== */
@@ -3202,7 +3256,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px 6px;
+  padding: 12px 16px 8px;
   flex-shrink: 0;
 }
 
@@ -3217,7 +3271,7 @@ html, body {
 .outline-body {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 8px 12px;
+  padding: 4px 10px 16px;
 }
 
 .outline-body::-webkit-scrollbar { width: 3px; }
@@ -3228,8 +3282,8 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 32px 16px;
+  gap: 12px;
+  padding: 40px 16px;
   color: var(--text-secondary);
   text-align: center;
 }
@@ -3248,21 +3302,21 @@ html, body {
 .outline-nav {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .outline-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 5px;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 6px;
   cursor: pointer;
   text-decoration: none;
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-secondary);
-  transition: all 0.12s;
+  transition: all 0.15s;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3271,6 +3325,7 @@ html, body {
 .outline-item:hover {
   background: var(--bg);
   color: var(--text);
+  transform: translateX(2px);
 }
 
 .outline-item.outline-active {
@@ -3284,7 +3339,7 @@ html, body {
   border-radius: 50%;
   background: var(--text-secondary);
   opacity: 0.5;
-  transition: all 0.12s;
+  transition: all 0.15s;
 }
 
 .bullet-h1 { width: 8px; height: 8px; }
@@ -3297,8 +3352,8 @@ html, body {
   opacity: 0.8;
 }
 
-.outline-level-2 { padding-left: 20px; }
-.outline-level-3 { padding-left: 32px; }
+.outline-level-2 { padding-left: 22px; }
+.outline-level-3 { padding-left: 36px; }
 
 .outline-text {
   overflow: hidden;

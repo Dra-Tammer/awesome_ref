@@ -206,9 +206,9 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
           <div class="note-list-card-row">
             <span class="note-list-card-date">{{ formatDate(note.updatedAt) }}</span>
             <div class="note-list-card-actions">
-              <button class="btn-note-action" :class="{ 'btn-note-pinned': note.pinned }" @click.stop="togglePin(note.id)" :title="note.pinned ? '取消置顶' : '置顶'">
-                <svg width="12" height="12" viewBox="0 0 24 24" :fill="note.pinned ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2">
-                  <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/>
+              <button class="btn-note-action btn-note-delete" @click.stop="deleteTarget = note" title="删除笔记">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                 </svg>
               </button>
               <button class="btn-note-action" @click.stop="startRename(note)" title="重命名">
@@ -216,9 +216,9 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
                   <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
                 </svg>
               </button>
-              <button class="btn-note-action btn-note-delete" @click.stop="deleteTarget = note" title="删除笔记">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              <button class="btn-note-action" :class="{ 'btn-note-pinned': note.pinned }" @click.stop="togglePin(note.id)" :title="note.pinned ? '取消置顶' : '置顶'">
+                <svg width="12" height="12" viewBox="0 0 24 24" :fill="note.pinned ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/>
                 </svg>
               </button>
             </div>

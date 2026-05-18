@@ -11,6 +11,7 @@ function parseHeadings(md) {
   if (!md) return []
   const result = []
   const lines = md.split('\n')
+  let index = 0
   for (const line of lines) {
     const m = line.match(/^(#{1,6})\s+(.+)/)
     if (m) {
@@ -18,8 +19,9 @@ function parseHeadings(md) {
       const text = m[2].trim()
       // Skip h4-h6; only show h1-h3
       if (level > 3) continue
-      const id = slugify(text)
+      const id = `${slugify(text)}-${index}`
       result.push({ level, text, id })
+      index++
     }
   }
   return result
@@ -34,9 +36,9 @@ function slugify(text) {
     .replace(/^-|-$/g, '')
 }
 
-watch(() => selectedNote.value?.content, (content) => {
-  headings.value = parseHeadings(content)
-  activeId.value = null
+watch(selectedNote, (note) => {
+  headings.value = parseHeadings(note?.content)
+  activeId.value = headings.value.length > 0 ? headings.value[0].id : null
 }, { immediate: true })
 
 const visibleHeadings = computed(() => {

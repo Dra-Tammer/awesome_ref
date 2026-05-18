@@ -160,35 +160,34 @@ onMounted(() => {
   </div>
 
   <div v-else class="detail-panel note-editor-panel">
-    <div class="note-editor-header">
-      <div class="note-editor-top">
-        <div class="note-editor-top-left">
-          <h2 class="note-title-display">{{ title || '无标题笔记' }}</h2>
-          <div v-if="!editing && (formattedUpdatedAt || wordCount)" class="note-editor-meta">
-            <span v-if="formattedUpdatedAt" class="note-meta-item">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              修改于 {{ formattedUpdatedAt }}
-            </span>
-            <span class="note-meta-item note-meta-wordcount">{{ wordCount }} 字</span>
-          </div>
-        </div>
-        <div class="note-editor-actions">
-          <span v-if="saved" class="note-status saved">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            已保存
-          </span>
-          <button v-if="!editing" class="btn-edit-note" @click="onEdit" title="编辑笔记">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-            </svg>
-            <span>编辑</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
     <Transition name="note-mode" mode="out-in">
       <div v-if="!editing" key="preview" class="note-editor-preview">
+        <div class="note-editor-header">
+          <div class="note-editor-top">
+            <div class="note-editor-top-left">
+              <h2 class="note-title-display">{{ title || '无标题笔记' }}</h2>
+              <div v-if="formattedUpdatedAt || wordCount" class="note-editor-meta">
+                <span v-if="formattedUpdatedAt" class="note-meta-item">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  修改于 {{ formattedUpdatedAt }}
+                </span>
+                <span class="note-meta-item note-meta-wordcount">{{ wordCount }} 字</span>
+              </div>
+            </div>
+            <div class="note-editor-actions">
+              <span v-if="saved" class="note-status saved">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                已保存
+              </span>
+              <button class="btn-edit-note" @click="onEdit" title="编辑笔记">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                </svg>
+                <span>编辑</span>
+              </button>
+            </div>
+          </div>
+        </div>
         <MdPreview v-if="content" :modelValue="content" :theme="editorTheme" previewOnly />
         <div v-else class="note-editor-empty">点击编辑添加笔记...</div>
       </div>
