@@ -47,18 +47,12 @@ const visibleHeadings = computed(() => {
 })
 
 function scrollToHeading(heading) {
-  // Try to find the heading element in the preview area
   const preview = document.querySelector('.note-editor-preview')
   if (!preview) return
 
-  const headingElements = preview.querySelectorAll('h1, h2, h3, h4, h5, h6')
-  let target = null
-  for (const el of headingElements) {
-    if (el.textContent?.trim() === heading.text) {
-      target = el
-      break
-    }
-  }
+  const headingElements = preview.querySelectorAll('h1, h2, h3')
+  const idx = headings.value.indexOf(heading)
+  const target = headingElements[idx]
 
   if (target) {
     activeId.value = heading.id
