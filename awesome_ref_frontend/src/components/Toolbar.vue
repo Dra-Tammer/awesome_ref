@@ -3,18 +3,11 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useAuth } from '../composables/useAuth.js'
 import { useTheme } from '../composables/useTheme.js'
 import { useToast } from '../composables/useToast.js'
-import { useReferences } from '../composables/useReferences.js'
-import { useGroups } from '../composables/useGroups.js'
-import { useNotes } from '../composables/useNotes.js'
-import ReferenceEditor from './ReferenceEditor.vue'
 import GlobalSearch from './GlobalSearch.vue'
 
-const { logout, username, getHeaders } = useAuth()
+const { logout, username } = useAuth()
 const { theme, toggle: toggleTheme } = useTheme()
 const { toast, showToast } = useToast()
-const { addReferences, loadReferences, loadTrash } = useReferences()
-const { loadGroups } = useGroups()
-const { loadNotes } = useNotes()
 
 const props = defineProps({
   viewMode: { type: String, default: 'references' },
@@ -25,9 +18,6 @@ const showSearch = ref(false)
 
 const showMenu = ref(false)
 const menuRef = ref(null)
-
-const showNewRefModal = ref(false)
-const showImportModal = ref(false)
 
 function onLogout() {
   showMenu.value = false
@@ -46,72 +36,6 @@ function onClickOutside(e) {
 
 onMounted(() => document.addEventListener('click', onClickOutside))
 onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
-
-function onNewRef() {
-  showMenu.value = false
-  showNewRefModal.value = true
-}
-
-function onImportRIS() {
-  showImportModal.value = false
-  showMenu.value = false
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = '.ris,.txt'
-  input.multiple = true
-  input.onchange = async (e) => {
-    const files = Array.from(e.target.files)
-    const { parseRIS } = await import('../utils/risParser.js')
-    const risFiles = files.filter(f => f.name.endsWith('.ris') || f.name.endsWith('.txt'))
-    if (risFiles.length === 0) return
-    const allRefs = []
-    for (const file of risFiles) {
-      const text = await file.text()
-      allRefs.push(...parseRIS(text))
-    }
-    if (allRefs.length > 0) {
-      await addReferences(allRefs)
-      showToast(`成功导入 ${allRefs.length} 条文献`)
-    } else {
-      showToast('未找到可导入的文献数据', 'error')
-    }
-  }
-  input.click()
-}
-
-function onImportJSON() {
-  showImportModal.value = false
-  showMenu.value = false
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = '.json'
-  input.onchange = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    try {
-      const text = await file.text()
-      const data = JSON.parse(text)
-      if (!data.export_version) {
-        showToast('无效的备份文件格式', 'error')
-        return
-      }
-      const res = await fetch('/api/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getHeaders() },
-        body: JSON.stringify(data),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || '导入失败')
-      }
-      await Promise.all([loadReferences(), loadGroups(), loadNotes(), loadTrash()])
-      showToast('导入成功')
-    } catch (e) {
-      showToast('导入失败: ' + e.message, 'error')
-    }
-  }
-  input.click()
-}
 
 </script>
 
@@ -186,20 +110,6 @@ function onImportJSON() {
         </button>
         <Transition name="dropdown">
           <div v-if="showMenu" class="dropdown-menu">
-            <button class="dropdown-item" @click="onNewRef">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              新建文献
-            </button>
-            <button class="dropdown-item" @click="showImportModal = true; showMenu = false">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
-              导入文献
-            </button>
-            <div class="dropdown-divider"></div>
             <button class="dropdown-item danger" @click="onLogout">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
@@ -211,40 +121,6 @@ function onImportJSON() {
       </div>
     </div>
   </header>
-
-  <!-- 导入格式选择弹框 -->
-  <Teleport to="body">
-    <Transition name="modal">
-      <div v-if="showImportModal" class="pwd-modal-overlay" @click.self="showImportModal = false">
-        <div class="pwd-modal import-modal">
-          <div class="pwd-modal-header">
-            <span>选择导入格式</span>
-            <button class="pwd-modal-close" @click="showImportModal = false">&times;</button>
-          </div>
-          <div class="import-modal-body">
-            <button class="import-option" @click="onImportRIS">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-              </svg>
-              <div class="import-option-text">
-                <span class="import-option-title">RIS 文件</span>
-                <span class="import-option-desc">导入 .ris 或 .txt 格式的文献数据</span>
-              </div>
-            </button>
-            <button class="import-option" @click="onImportJSON">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15v-2h2a1 1 0 1 0 0-2H9"/>
-              </svg>
-              <div class="import-option-text">
-                <span class="import-option-title">JSON 备份文件</span>
-                <span class="import-option-desc">导入包含分组、文献和笔记的完整备份</span>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
 
   <!-- Toast 提示 -->
   <Teleport to="body">
@@ -266,6 +142,4 @@ function onImportJSON() {
     @close="showSearch = false"
     @navigate="(item) => emit('navigate', item)"
   />
-
-  <ReferenceEditor v-if="showNewRefModal" @close="showNewRefModal = false" />
 </template>

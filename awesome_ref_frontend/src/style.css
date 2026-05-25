@@ -1195,6 +1195,69 @@ html, body {
   background: var(--accent-light);
 }
 
+/* ========== Add Menu (新建/导入) ========== */
+.add-menu-wrapper {
+  position: relative;
+}
+
+.btn-add {
+  color: var(--accent);
+}
+
+.btn-add.active {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.add-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 150px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 6px;
+  z-index: 100;
+}
+
+.add-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.add-dropdown-item svg {
+  color: var(--text-secondary);
+  transition: color 0.15s;
+}
+
+.add-dropdown-item:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.add-dropdown-item:hover svg {
+  color: var(--accent);
+}
+
+.add-dropdown-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
 .ref-count {
   font-size: 11px;
   color: var(--text-secondary);

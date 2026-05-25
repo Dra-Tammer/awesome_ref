@@ -2,12 +2,17 @@
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useReferences } from '../composables/useReferences.js'
 import { useNotes } from '../composables/useNotes.js'
+import { useGroups } from '../composables/useGroups.js'
+import { useAuth } from '../composables/useAuth.js'
 import { useToast } from '../composables/useToast.js'
 import { highlightText } from '../utils/highlight.js'
 import ConfirmDialog from './ConfirmDialog.vue'
+import ReferenceEditor from './ReferenceEditor.vue'
 
-const { filteredReferences, references, trashReferences, selectByIndex, selectById, selectedReference, sortField, sortOrder, toggleSort, setSortField, searchQuery, activeGroupId, isTrashMode, clearTrash } = useReferences()
-const { hasNote } = useNotes()
+const { filteredReferences, references, trashReferences, selectByIndex, selectById, selectedReference, sortField, sortOrder, toggleSort, setSortField, searchQuery, activeGroupId, isTrashMode, clearTrash, addReferences, loadReferences, loadTrash } = useReferences()
+const { hasNote, loadNotes } = useNotes()
+const { loadGroups } = useGroups()
+const { getHeaders } = useAuth()
 const { showToast } = useToast()
 
 const listRef = ref(null)
@@ -33,6 +38,9 @@ function onPickField(field) {
 function onClickOutside(e) {
   if (sortMenuRef.value && !sortMenuRef.value.contains(e.target)) {
     showSortMenu.value = false
+  }
+  if (addMenuRef.value && !addMenuRef.value.contains(e.target)) {
+    showAddMenu.value = false
   }
 }
 
@@ -63,6 +71,83 @@ async function onConfirmClearTrash() {
   clearTrashConfirm.value = false
   const count = await clearTrash()
   if (count > 0) showToast(`已清空 ${count} 篇文献，无法撤回`, 'error')
+}
+
+// ── 新建 / 导入文献 ──
+const showNewRefModal = ref(false)
+const showImportModal = ref(false)
+const showAddMenu = ref(false)
+const addMenuRef = ref(null)
+
+function toggleAddMenu(e) {
+  e.stopPropagation()
+  showAddMenu.value = !showAddMenu.value
+}
+
+function onNewRef() {
+  showAddMenu.value = false
+  showNewRefModal.value = true
+}
+
+function onImportRIS() {
+  showImportModal.value = false
+  showAddMenu.value = false
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.ris,.txt'
+  input.multiple = true
+  input.onchange = async (e) => {
+    const files = Array.from(e.target.files)
+    const { parseRIS } = await import('../utils/risParser.js')
+    const risFiles = files.filter(f => f.name.endsWith('.ris') || f.name.endsWith('.txt'))
+    if (risFiles.length === 0) return
+    const allRefs = []
+    for (const file of risFiles) {
+      const text = await file.text()
+      allRefs.push(...parseRIS(text))
+    }
+    if (allRefs.length > 0) {
+      await addReferences(allRefs)
+      showToast(`成功导入 ${allRefs.length} 条文献`)
+    } else {
+      showToast('未找到可导入的文献数据', 'error')
+    }
+  }
+  input.click()
+}
+
+function onImportJSON() {
+  showImportModal.value = false
+  showAddMenu.value = false
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json'
+  input.onchange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    try {
+      const text = await file.text()
+      const data = JSON.parse(text)
+      if (!data.export_version) {
+        showToast('无效的备份文件格式', 'error')
+        return
+      }
+      const res = await fetch('/api/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || '导入失败')
+      }
+      await Promise.all([loadReferences(), loadGroups(), loadNotes(), loadTrash()])
+      showToast('导入成功')
+    } catch (e) {
+      showToast('导入失败: ' + e.message, 'error')
+    }
+  }
+  input.click()
 }
 </script>
 
@@ -102,6 +187,32 @@ async function onConfirmClearTrash() {
             <line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
           </svg>
         </button>
+        <!-- 新建/导入 下拉 -->
+        <div class="add-menu-wrapper" ref="addMenuRef">
+          <button class="btn-sort btn-add" :class="{ active: showAddMenu }" @click="toggleAddMenu" title="新建 / 导入">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+          <Transition name="dropdown">
+            <div v-if="showAddMenu" class="add-dropdown">
+              <button class="add-dropdown-item" @click="onNewRef">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                <span>新建文献</span>
+              </button>
+              <div class="add-dropdown-divider"></div>
+              <button class="add-dropdown-item" @click="showImportModal = true; showAddMenu = false">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <span>导入文献</span>
+              </button>
+            </div>
+          </Transition>
+        </div>
         <span class="ref-count">{{ filteredReferences.length }} 篇</span>
       </div>
       <div class="list-header-right" v-else>
@@ -130,7 +241,7 @@ async function onConfirmClearTrash() {
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
           <polyline points="14 2 14 8 20 8"/>
         </svg>
-        <p>拖拽 .ris 文件到此处<br>或点击上方"导入 RIS"按钮</p>
+        <p>拖拽 .ris 文件到此处<br>或点击上方 + 按钮导入文献</p>
       </div>
       <div v-else-if="isTrashMode && trashReferences && trashReferences.length === 0" class="empty-state">
         <p>回收站为空</p>
@@ -166,5 +277,41 @@ async function onConfirmClearTrash() {
       @confirm="onConfirmClearTrash"
       @cancel="clearTrashConfirm = false"
     />
+
+    <!-- 导入格式选择弹框 -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showImportModal" class="pwd-modal-overlay" @click.self="showImportModal = false">
+          <div class="pwd-modal import-modal">
+            <div class="pwd-modal-header">
+              <span>选择导入格式</span>
+              <button class="pwd-modal-close" @click="showImportModal = false">&times;</button>
+            </div>
+            <div class="import-modal-body">
+              <button class="import-option" @click="onImportRIS">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                </svg>
+                <div class="import-option-text">
+                  <span class="import-option-title">RIS 文件</span>
+                  <span class="import-option-desc">导入 .ris 或 .txt 格式的文献数据</span>
+                </div>
+              </button>
+              <button class="import-option" @click="onImportJSON">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15v-2h2a1 1 0 1 0 0-2H9"/>
+                </svg>
+                <div class="import-option-text">
+                  <span class="import-option-title">JSON 备份文件</span>
+                  <span class="import-option-desc">导入包含分组、文献和笔记的完整备份</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <ReferenceEditor v-if="showNewRefModal" @close="showNewRefModal = false" />
   </div>
 </template>
