@@ -27,6 +27,7 @@ const sortFieldLabel = computed(() => {
 
 function onSortFieldClick(e) {
   e.stopPropagation()
+  showAddMenu.value = false
   showSortMenu.value = !showSortMenu.value
 }
 
@@ -81,6 +82,7 @@ const addMenuRef = ref(null)
 
 function toggleAddMenu(e) {
   e.stopPropagation()
+  showSortMenu.value = false
   showAddMenu.value = !showAddMenu.value
 }
 
