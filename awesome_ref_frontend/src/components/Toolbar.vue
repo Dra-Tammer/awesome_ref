@@ -53,7 +53,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
       </h1>
     </div>
     <div class="toolbar-center">
-      <span class="view-mode-indicator" :class="{ middle: viewMode === 'notes', right: viewMode === 'profile' }"></span>
+      <span class="view-mode-indicator" :class="{ second: viewMode === 'notes', third: viewMode === 'daily-tasks', fourth: viewMode === 'profile' }"></span>
       <button
         class="btn-view-mode"
         :class="{ active: viewMode === 'references' }"
@@ -75,6 +75,16 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
           <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
         </svg>
         笔记
+      </button>
+      <button
+        class="btn-view-mode"
+        :class="{ active: viewMode === 'daily-tasks' }"
+        @click="emit('update:viewMode', 'daily-tasks')"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+        任务
       </button>
       <button
         class="btn-view-mode"

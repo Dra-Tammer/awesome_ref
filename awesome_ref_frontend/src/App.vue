@@ -5,6 +5,7 @@ import { useReferences } from './composables/useReferences.js'
 import { useNotes } from './composables/useNotes.js'
 import { useGroups } from './composables/useGroups.js'
 import { useStandaloneNotes } from './composables/useStandaloneNotes.js'
+import { useDailyTasks } from './composables/useDailyTasks.js'
 import { parseRIS } from './utils/risParser.js'
 import LoginPage from './components/LoginPage.vue'
 import Toolbar from './components/Toolbar.vue'
@@ -16,6 +17,7 @@ import NoteOutline from './components/NoteOutline.vue'
 import StandaloneNoteEditor from './components/StandaloneNoteEditor.vue'
 import DropOverlay from './components/DropOverlay.vue'
 import ProfilePage from './components/ProfilePage.vue'
+import DailyTasksPage from './components/DailyTasksPage.vue'
 
 const checking = ref(true)
 const { isLoggedIn, tryRestoreSession } = useAuth()
@@ -23,8 +25,9 @@ const { loadReferences, loadTrash, addReferences, setNotes, resetAll, selectedRe
 const { loadNotes, notes, resetNotes } = useNotes()
 const { loadGroups, resetGroups } = useGroups()
 const { notes: standaloneNotes, loadNotes: loadStandaloneNotes, resetNotes: resetStandaloneNotes, selectedNote: selectedStandaloneNote, selectNote: selectStandaloneNote } = useStandaloneNotes()
+const { loadToday: loadDailyTasks, loadHeatmap, resetDailyTasks } = useDailyTasks()
 
-const viewMode = ref('references') // 'references' | 'notes' | 'profile'
+const viewMode = ref('references') // 'references' | 'notes' | 'daily-tasks' | 'profile'
 
 // Left sidebar (GroupList)
 const leftWidth = ref(240)
@@ -149,7 +152,7 @@ const rightPrevWidthForNotes = ref(780)
 
 // Auto-select first note when switching to notes mode
 watch(viewMode, (mode) => {
-  if (mode === 'profile') return
+  if (mode === 'profile' || mode === 'daily-tasks') return
   if (mode === 'notes') {
     if (!selectedStandaloneNote.value && standaloneNotes.value.length > 0) {
       selectStandaloneNote(standaloneNotes.value[0])
@@ -167,19 +170,20 @@ watch(notes, (val) => setNotes(val), { immediate: true })
 
 watch(isLoggedIn, async (loggedIn) => {
   if (loggedIn) {
-    await Promise.all([loadReferences(), loadNotes(), loadGroups(), loadTrash(), loadStandaloneNotes()])
+    await Promise.all([loadReferences(), loadNotes(), loadGroups(), loadTrash(), loadStandaloneNotes(), loadDailyTasks(), loadHeatmap()])
   } else {
     resetAll()
     resetNotes()
     resetGroups()
     resetStandaloneNotes()
+    resetDailyTasks()
   }
 })
 
 onMounted(async () => {
   const restored = await tryRestoreSession()
   if (restored) {
-    await Promise.all([loadReferences(), loadNotes(), loadGroups(), loadTrash(), loadStandaloneNotes()])
+    await Promise.all([loadReferences(), loadNotes(), loadGroups(), loadTrash(), loadStandaloneNotes(), loadDailyTasks(), loadHeatmap()])
   }
   checking.value = false
 
@@ -240,7 +244,8 @@ function handleGlobalNavigate(item) {
     <div v-else class="app" key="main">
       <Toolbar :viewMode="viewMode" @update:viewMode="viewMode = $event" @navigate="handleGlobalNavigate" />
       <ProfilePage v-if="viewMode === 'profile'" />
-      <div class="main" v-show="viewMode !== 'profile'">
+      <DailyTasksPage v-if="viewMode === 'daily-tasks'" />
+      <div class="main" v-show="viewMode !== 'profile' && viewMode !== 'daily-tasks'">
         <aside
           class="side-panel left-panel"
           :class="{ collapsed: leftCollapsed, resizing: resizingLeft }"

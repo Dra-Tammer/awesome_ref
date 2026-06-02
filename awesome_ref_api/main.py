@@ -14,9 +14,9 @@ from pathlib import Path
 
 from sqlalchemy import text
 from database import engine, SessionLocal, Base
-from models import User, Reference, Note, Group, StandaloneNote
+from models import User, Reference, Note, Group, StandaloneNote, DailyPlan, DailyTask
 from auth_utils import init_default_user
-from routers import auth, references, notes, groups, export, standalone_notes, stats
+from routers import auth, references, notes, groups, export, standalone_notes, stats, daily_tasks
 
 logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout)
 logger = logging.getLogger("awesomeref")
@@ -110,6 +110,7 @@ app.include_router(groups.router, prefix="/api", tags=["groups"])
 app.include_router(export.router, prefix="/api", tags=["export"])
 app.include_router(standalone_notes.router, prefix="/api", tags=["standalone-notes"])
 app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
+app.include_router(daily_tasks.router, prefix="/api", tags=["daily-tasks"])
 
 # 生产模式：服务前端静态文件
 dist_dir = Path(__file__).parent.parent / "awesome_ref_frontend" / "dist"

@@ -23,6 +23,7 @@ class User(Base):
     notes = relationship("Note", back_populates="user", cascade="all, delete-orphan")
     standalone_notes = relationship("StandaloneNote", back_populates="user", cascade="all, delete-orphan")
     groups = relationship("Group", back_populates="user", cascade="all, delete-orphan")
+    daily_plans = relationship("DailyPlan", back_populates="user", cascade="all, delete-orphan")
 
 
 class Group(Base):
@@ -92,3 +93,34 @@ class StandaloneNote(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="standalone_notes")
+
+
+class DailyPlan(Base):
+    __tablename__ = "daily_plans"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    date = Column(String(10), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="daily_plans")
+    tasks = relationship("DailyTask", back_populates="plan", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "date", name="uq_user_daily_plan"),
+    )
+
+
+class DailyTask(Base):
+    __tablename__ = "daily_tasks"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    plan_id = Column(Integer, ForeignKey("daily_plans.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    status = Column(String(10), default="pending")
+    note = Column(Text, default="")
+    sort_order = Column(Integer, default=0)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    plan = relationship("DailyPlan", back_populates="tasks")
