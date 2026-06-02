@@ -168,14 +168,6 @@ html::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   overflow: hidden;
 }
 
-.app-content {
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
 /* ========== Toolbar ========== */
 .toolbar {
   display: flex;

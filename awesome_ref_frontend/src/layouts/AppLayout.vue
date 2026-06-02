@@ -50,7 +50,6 @@ watch(() => auth.isLoggedIn, async (loggedIn) => {
 })
 
 onMounted(async () => {
-  // App.vue already handles session restoration; just load data if logged in
   if (auth.isLoggedIn) {
     await loadAllData()
   }
@@ -98,8 +97,8 @@ function handleGlobalNavigate(item) {
 
   <div v-else class="app">
     <Toolbar @navigate="handleGlobalNavigate" />
-    <div class="app-content">
-      <router-view />
-    </div>
+    <router-view v-slot="{ Component }">
+      <component :is="Component" />
+    </router-view>
   </div>
 </template>
