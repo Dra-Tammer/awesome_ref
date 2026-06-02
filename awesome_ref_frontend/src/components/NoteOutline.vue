@@ -1,8 +1,8 @@
 <script setup>
-import { computed, ref, watch, nextTick } from 'vue'
-import { useStandaloneNotes } from '../composables/useStandaloneNotes.js'
+import { computed, ref, watch } from 'vue'
+import { useStandaloneNotesStore } from '../stores/standaloneNotes.js'
 
-const { selectedNote } = useStandaloneNotes()
+const standaloneNotesStore = useStandaloneNotesStore()
 
 const headings = ref([])
 const activeId = ref(null)
@@ -17,7 +17,6 @@ function parseHeadings(md) {
     if (m) {
       const level = m[1].length
       const text = m[2].trim()
-      // Skip h4-h6; only show h1-h3
       if (level > 3) continue
       const id = `${slugify(text)}-${index}`
       result.push({ level, text, id })
@@ -36,7 +35,7 @@ function slugify(text) {
     .replace(/^-|-$/g, '')
 }
 
-watch(selectedNote, (note) => {
+watch(() => standaloneNotesStore.selectedNote, (note) => {
   headings.value = parseHeadings(note?.content)
   activeId.value = headings.value.length > 0 ? headings.value[0].id : null
 }, { immediate: true })
@@ -68,7 +67,7 @@ function scrollToHeading(heading) {
     </div>
 
     <div class="outline-body">
-      <div v-if="!selectedNote" class="outline-empty">
+      <div v-if="!standaloneNotesStore.selectedNote" class="outline-empty">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3">
           <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
           <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>

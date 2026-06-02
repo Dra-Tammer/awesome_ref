@@ -1,19 +1,19 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { useReferences } from '../composables/useReferences.js'
-import { useStandaloneNotes } from '../composables/useStandaloneNotes.js'
-import { useGroups } from '../composables/useGroups.js'
-import { useNotes } from '../composables/useNotes.js'
+import { useReferencesStore } from '../stores/references.js'
+import { useStandaloneNotesStore } from '../stores/standaloneNotes.js'
+import { useGroupsStore } from '../stores/groups.js'
+import { useNotesStore } from '../stores/notes.js'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
 })
 const emit = defineEmits(['close', 'navigate'])
 
-const { references } = useReferences()
-const { notes: standaloneNotes } = useStandaloneNotes()
-const { groups } = useGroups()
-const { notes: refNotes } = useNotes()
+const refsStore = useReferencesStore()
+const standaloneNotesStore = useStandaloneNotesStore()
+const groupsStore = useGroupsStore()
+const notesStore = useNotesStore()
 
 const query = ref('')
 const activeIndex = ref(0)
@@ -22,7 +22,6 @@ const resultRef = ref(null)
 
 const MAX_PER_GROUP = 5
 
-// 全局 Escape 监听
 function onGlobalKeydown(e) {
   if (e.key === 'Escape' && props.visible) {
     e.preventDefault()
@@ -40,7 +39,6 @@ watch(() => props.visible, (v) => {
   }
 })
 
-// 输入时重置选中索引
 watch(query, () => { activeIndex.value = 0 })
 
 const groupedResults = computed(() => {
@@ -54,14 +52,13 @@ const groupedResults = computed(() => {
     return words.every(w => lower.includes(w))
   }
 
-  // 文献
   const refs = []
-  for (const r of references.value) {
+  for (const r of refsStore.references) {
     if (refs.length >= MAX_PER_GROUP) break
     const fields = [
       r.title, r.abstract, r.journal, r.doi,
       ...(r.authors || []), ...(r.keywords || []),
-      refNotes.value[r.id]?.content || '',
+      notesStore.notes[r.id]?.content || '',
     ]
     if (fields.some(f => match(f))) {
       refs.push({
@@ -72,9 +69,8 @@ const groupedResults = computed(() => {
     }
   }
 
-  // 独立笔记
   const notes = []
-  for (const n of standaloneNotes.value) {
+  for (const n of standaloneNotesStore.notes) {
     if (notes.length >= MAX_PER_GROUP) break
     if (match(n.title) || match(n.content)) {
       notes.push({
@@ -86,9 +82,8 @@ const groupedResults = computed(() => {
     }
   }
 
-  // 分组
   const grps = []
-  for (const g of groups.value) {
+  for (const g of groupsStore.groups) {
     if (grps.length >= MAX_PER_GROUP) break
     if (g.id === 'ungrouped') continue
     if (match(g.name)) {
@@ -118,7 +113,6 @@ function flatIndex(groupIdx, itemIdx) {
   return offset + itemIdx
 }
 
-// 滚动到选中项
 watch(activeIndex, () => {
   nextTick(() => {
     const el = resultRef.value?.querySelector('.search-panel-item.active')

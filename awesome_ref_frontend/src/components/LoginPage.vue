@@ -1,8 +1,10 @@
 <script setup>
 import { ref, nextTick } from 'vue'
-import { useAuth } from '../composables/useAuth.js'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth.js'
 
-const { login, register } = useAuth()
+const router = useRouter()
+const auth = useAuthStore()
 
 const isRegister = ref(false)
 const form = ref({ username: '', password: '', confirmPassword: '' })
@@ -17,7 +19,7 @@ async function onSubmit() {
   loading.value = true
   try {
     if (isRegister.value) {
-      await register(form.value.username, form.value.password, form.value.confirmPassword)
+      await auth.register(form.value.username, form.value.password, form.value.confirmPassword)
       success.value = '注册成功，请输入密码登录'
       form.value.password = ''
       form.value.confirmPassword = ''
@@ -25,7 +27,8 @@ async function onSubmit() {
       await nextTick()
       passwordRef.value?.focus()
     } else {
-      await login(form.value.username, form.value.password)
+      await auth.login(form.value.username, form.value.password)
+      router.push({ name: 'references' })
     }
   } catch (e) {
     error.value = e.message

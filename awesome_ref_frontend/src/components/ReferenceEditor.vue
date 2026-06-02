@@ -1,13 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useReferences } from '../composables/useReferences.js'
-import { useToast } from '../composables/useToast.js'
+import { useReferencesStore } from '../stores/references.js'
+import { useToastStore } from '../stores/toast.js'
 import { parseBibTeX } from '../utils/bibtexParser.js'
 
 const emit = defineEmits(['close'])
 
-const { addReferences } = useReferences()
-const { showToast } = useToast()
+const refsStore = useReferencesStore()
+const toastStore = useToastStore()
 
 const visible = ref(false)
 const saving = ref(false)
@@ -115,13 +115,13 @@ function selectParsedRef(index) {
 async function onBibtexImportAll() {
   saving.value = true
   try {
-    await addReferences(parsedRefs.value)
-    showToast(`成功创建 ${parsedRefs.value.length} 条文献`)
+    await refsStore.addReferences(parsedRefs.value)
+    toastStore.showToast(`成功创建 ${parsedRefs.value.length} 条文献`)
     bibtexText.value = ''
     parsedRefs.value = []
     close()
   } catch (e) {
-    showToast('创建失败: ' + e.message, 'error')
+    toastStore.showToast('创建失败: ' + e.message, 'error')
   } finally {
     saving.value = false
   }
@@ -129,12 +129,12 @@ async function onBibtexImportAll() {
 
 async function onSubmit() {
   if (!form.value.title.trim()) {
-    showToast('请输入文献标题', 'error')
+    toastStore.showToast('请输入文献标题', 'error')
     return
   }
   saving.value = true
   try {
-    await addReferences([{
+    await refsStore.addReferences([{
       type: form.value.type,
       title: form.value.title.trim(),
       authors: parseAuthors(form.value.authors),
@@ -147,13 +147,13 @@ async function onSubmit() {
       abstract: form.value.abstract.trim(),
       keywords: parseKeywords(form.value.keywords),
     }])
-    showToast('文献创建成功')
+    toastStore.showToast('文献创建成功')
     resetForm()
     bibtexText.value = ''
     parsedRefs.value = []
     close()
   } catch (e) {
-    showToast('创建失败: ' + e.message, 'error')
+    toastStore.showToast('创建失败: ' + e.message, 'error')
   } finally {
     saving.value = false
   }

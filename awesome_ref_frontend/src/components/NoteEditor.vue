@@ -1,17 +1,17 @@
 <script setup>
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
-import { useNotes } from '../composables/useNotes.js'
-import { useReferences } from '../composables/useReferences.js'
-import { useToast } from '../composables/useToast.js'
+import { useNotesStore } from '../stores/notes.js'
+import { useReferencesStore } from '../stores/references.js'
+import { useToastStore } from '../stores/toast.js'
 import { highlightText } from '../utils/highlight.js'
 
 const props = defineProps({
   refId: { type: String, required: true },
 })
 
-const { getNote, saveNote } = useNotes()
-const { searchQuery } = useReferences()
-const { showToast } = useToast()
+const notesStore = useNotesStore()
+const refsStore = useReferencesStore()
+const toastStore = useToastStore()
 
 const content = ref('')
 const editing = ref(false)
@@ -23,7 +23,7 @@ let saveTimer = null
 onBeforeUnmount(() => { if (saveTimer) clearTimeout(saveTimer) })
 
 watch(() => props.refId, (id) => {
-  const note = getNote(id)
+  const note = notesStore.getNote(id)
   content.value = note?.content || ''
   updatedAt.value = note?.updatedAt || ''
   editing.value = false
@@ -36,22 +36,22 @@ function onEdit() {
 
 async function onSave() {
   saving.value = true
-  const note = await saveNote(props.refId, content.value)
+  const note = await notesStore.saveNote(props.refId, content.value)
   if (note) {
     updatedAt.value = note.updatedAt
     saved.value = true
     editing.value = false
-    showToast('笔记已保存')
+    toastStore.showToast('笔记已保存')
     if (saveTimer) clearTimeout(saveTimer)
     saveTimer = setTimeout(() => { saved.value = false }, 2000)
   } else {
-    showToast('保存失败', 'error')
+    toastStore.showToast('保存失败', 'error')
   }
   saving.value = false
 }
 
 function onCancel() {
-  const note = getNote(props.refId)
+  const note = notesStore.getNote(props.refId)
   content.value = note?.content || ''
   editing.value = false
 }
@@ -87,7 +87,7 @@ const hasContent = computed(() => !!content.value.trim())
         </button>
       </div>
     </div>
-    <div v-if="hasContent" class="note-card-text" v-html="highlightText(content, searchQuery)"></div>
+    <div v-if="hasContent" class="note-card-text" v-html="highlightText(content, refsStore.searchQuery)"></div>
     <div v-else class="note-card-placeholder">点击编辑添加笔记...</div>
   </div>
 

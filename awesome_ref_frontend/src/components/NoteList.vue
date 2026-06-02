@@ -1,11 +1,11 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { useStandaloneNotes } from '../composables/useStandaloneNotes.js'
-import { useToast } from '../composables/useToast.js'
+import { useStandaloneNotesStore } from '../stores/standaloneNotes.js'
+import { useToastStore } from '../stores/toast.js'
 import ConfirmDialog from './ConfirmDialog.vue'
 
-const { notes, selectedNote, createNote, deleteNote, selectNote, updateNote, isDuplicateTitle, togglePin, sortMode, setSortMode } = useStandaloneNotes()
-const { showToast } = useToast()
+const standaloneNotesStore = useStandaloneNotesStore()
+const toastStore = useToastStore()
 
 const searchQuery = ref('')
 const deleteTarget = ref(null)
@@ -13,13 +13,11 @@ const showTitleModal = ref(false)
 const newNoteTitle = ref('')
 const titleInputRef = ref(null)
 
-// 重命名状态
 const renameTarget = ref(null)
 const renameTitle = ref('')
 const renameInputRef = ref(null)
 function setRenameRef(el) { renameInputRef.value = el }
 
-// 排序菜单
 const showSortMenu = ref(false)
 const sortMenuRef = ref(null)
 const sortLabel = { updated: '更新时间', created: '创建时间', title: '标题' }
@@ -37,9 +35,9 @@ watch(showTitleModal, (v) => {
 })
 
 const filteredNotes = computed(() => {
-  if (!searchQuery.value.trim()) return notes.value
+  if (!searchQuery.value.trim()) return standaloneNotesStore.notes
   const q = searchQuery.value.toLowerCase()
-  return notes.value.filter(n =>
+  return standaloneNotesStore.notes.filter(n =>
     n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
   )
 })
@@ -68,23 +66,23 @@ function onCreateNote() {
 
 async function onConfirmCreate() {
   const title = newNoteTitle.value.trim() || '无标题笔记'
-  if (isDuplicateTitle(title)) {
-    showToast('已存在同名笔记', 'error')
+  if (standaloneNotesStore.isDuplicateTitle(title)) {
+    toastStore.showToast('已存在同名笔记', 'error')
     return
   }
   showTitleModal.value = false
-  const note = await createNote(title)
-  if (note) showToast('笔记已创建')
+  const note = await standaloneNotesStore.createNote(title)
+  if (note) toastStore.showToast('笔记已创建')
 }
 
 function onClickNote(note) {
-  selectNote(note)
+  standaloneNotesStore.selectNote(note)
 }
 
 async function onConfirmDelete() {
   if (!deleteTarget.value) return
-  const ok = await deleteNote(deleteTarget.value.id)
-  if (ok) showToast('笔记已删除')
+  const ok = await standaloneNotesStore.deleteNote(deleteTarget.value.id)
+  if (ok) toastStore.showToast('笔记已删除')
   deleteTarget.value = null
 }
 
@@ -101,18 +99,18 @@ async function confirmRename() {
   const id = renameTarget.value
   if (!id) return
   const newTitle = renameTitle.value.trim()
-  const original = notes.value.find(n => n.id === id)
+  const original = standaloneNotesStore.notes.find(n => n.id === id)
   renameTarget.value = null
   if (!newTitle || newTitle === original?.title) return
-  if (isDuplicateTitle(newTitle, id)) {
-    showToast('已存在同名笔记', 'error')
+  if (standaloneNotesStore.isDuplicateTitle(newTitle, id)) {
+    toastStore.showToast('已存在同名笔记', 'error')
     return
   }
-  const updated = await updateNote(id, { title: newTitle })
+  const updated = await standaloneNotesStore.updateNote(id, { title: newTitle })
   if (updated) {
-    showToast('标题已重命名')
+    toastStore.showToast('标题已重命名')
   } else {
-    showToast('重命名失败', 'error')
+    toastStore.showToast('重命名失败', 'error')
   }
 }
 
@@ -120,7 +118,6 @@ function cancelRename() {
   renameTarget.value = null
 }
 
-// 点击外部自动退出重命名
 function onDocumentClick(e) {
   if (!renameTarget.value) return
   if (!e.target.closest('.note-list-card-rename')) {
@@ -141,13 +138,13 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="4" y1="6" x2="16" y2="6"/><line x1="4" y1="12" x2="13" y2="12"/><line x1="4" y1="18" x2="10" y2="18"/>
             </svg>
-            <span class="btn-sort-label">{{ sortLabel[sortMode] }}</span>
+            <span class="btn-sort-label">{{ sortLabel[standaloneNotesStore.sortMode] }}</span>
           </button>
           <Transition name="dropdown">
             <div v-if="showSortMenu" class="sort-dropdown">
-              <button class="sort-dropdown-item" :class="{ active: sortMode === 'updated' }" @click="setSortMode('updated'); showSortMenu = false">更新时间</button>
-              <button class="sort-dropdown-item" :class="{ active: sortMode === 'created' }" @click="setSortMode('created'); showSortMenu = false">创建时间</button>
-              <button class="sort-dropdown-item" :class="{ active: sortMode === 'title' }" @click="setSortMode('title'); showSortMenu = false">标题</button>
+              <button class="sort-dropdown-item" :class="{ active: standaloneNotesStore.sortMode === 'updated' }" @click="standaloneNotesStore.setSortMode('updated'); showSortMenu = false">更新时间</button>
+              <button class="sort-dropdown-item" :class="{ active: standaloneNotesStore.sortMode === 'created' }" @click="standaloneNotesStore.setSortMode('created'); showSortMenu = false">创建时间</button>
+              <button class="sort-dropdown-item" :class="{ active: standaloneNotesStore.sortMode === 'title' }" @click="standaloneNotesStore.setSortMode('title'); showSortMenu = false">标题</button>
             </div>
           </Transition>
         </div>
@@ -156,7 +153,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
         </button>
-        <span class="ref-count">{{ notes.length }} 篇</span>
+        <span class="ref-count">{{ standaloneNotesStore.notes.length }} 篇</span>
       </div>
     </div>
     <div class="list-search">
@@ -171,7 +168,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
       </button>
     </div>
     <div class="ref-list">
-      <div v-if="notes.length === 0" class="empty-state">
+      <div v-if="standaloneNotesStore.notes.length === 0" class="empty-state">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.4">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
           <polyline points="14 2 14 8 20 8"/>
@@ -186,7 +183,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
           v-for="note in filteredNotes"
           :key="note.id"
           class="note-list-card"
-          :class="{ active: selectedNote?.id === note.id, pinned: note.pinned }"
+          :class="{ active: standaloneNotesStore.selectedNote?.id === note.id, pinned: note.pinned }"
           @click="onClickNote(note)"
         >
           <div v-if="renameTarget === note.id" class="note-list-card-rename" @click.stop>
@@ -216,7 +213,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
                   <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
                 </svg>
               </button>
-              <button class="btn-note-action" :class="{ 'btn-note-pinned': note.pinned }" @click.stop="togglePin(note.id)" :title="note.pinned ? '取消置顶' : '置顶'">
+              <button class="btn-note-action" :class="{ 'btn-note-pinned': note.pinned }" @click.stop="standaloneNotesStore.togglePin(note.id)" :title="note.pinned ? '取消置顶' : '置顶'">
                 <svg width="12" height="12" viewBox="0 0 24 24" :fill="note.pinned ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2">
                   <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/>
                 </svg>

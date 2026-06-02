@@ -6,7 +6,6 @@ import hljs from 'highlight.js/lib/core'
 import 'highlight.js/styles/atom-one-light.css'
 import 'highlight.js/styles/atom-one-dark.css'
 
-// 按需加载常用语言，避免打包体积过大
 import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
 import python from 'highlight.js/lib/languages/python'
@@ -67,13 +66,13 @@ config({
     }
   }
 })
-import { useStandaloneNotes } from '../composables/useStandaloneNotes.js'
-import { useTheme } from '../composables/useTheme.js'
-import { useToast } from '../composables/useToast.js'
+import { useStandaloneNotesStore } from '../stores/standaloneNotes.js'
+import { useThemeStore } from '../stores/theme.js'
+import { useToastStore } from '../stores/toast.js'
 
-const { selectedNote, updateNote, uploadImage, hasUnsavedChanges, registerSaveCallback } = useStandaloneNotes()
-const { theme } = useTheme()
-const { showToast } = useToast()
+const standaloneNotesStore = useStandaloneNotesStore()
+const themeStore = useThemeStore()
+const toastStore = useToastStore()
 
 const title = ref('')
 const content = ref('')
@@ -83,7 +82,6 @@ const saved = ref(false)
 let saveTimer = null
 let lastNoteId = null
 
-// 守卫标志：selectedNote watch 同步数据时防止触发脏检测
 let syncingFromNote = false
 
 const wordCount = computed(() => {
@@ -93,15 +91,14 @@ const wordCount = computed(() => {
 })
 
 const formattedUpdatedAt = computed(() => {
-  if (!selectedNote.value?.updatedAt) return ''
-  return new Date(selectedNote.value.updatedAt).toLocaleString('zh-CN', {
+  if (!standaloneNotesStore.selectedNote?.updatedAt) return ''
+  return new Date(standaloneNotesStore.selectedNote.updatedAt).toLocaleString('zh-CN', {
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit',
   })
 })
 
-// selectedNote 变化：区分同篇更新 vs 切换笔记
-watch(selectedNote, (note) => {
+watch(() => standaloneNotesStore.selectedNote, (note) => {
   syncingFromNote = true
   const newId = note?.id ?? null
   if (newId === lastNoteId && newId !== null) {
@@ -119,33 +116,31 @@ watch(selectedNote, (note) => {
   }
   editing.value = false
   saved.value = false
-  hasUnsavedChanges.value = false
+  standaloneNotesStore.hasUnsavedChanges = false
   nextTick(() => { syncingFromNote = false })
 }, { immediate: true })
 
-// 脏检测：标题或内容变化时标记未保存
 watch([title, content], () => {
-  if (syncingFromNote || !selectedNote.value) return
-  hasUnsavedChanges.value =
-    title.value !== (selectedNote.value.title || '') ||
-    content.value !== (selectedNote.value.content || '')
+  if (syncingFromNote || !standaloneNotesStore.selectedNote) return
+  standaloneNotesStore.hasUnsavedChanges =
+    title.value !== (standaloneNotesStore.selectedNote.title || '') ||
+    content.value !== (standaloneNotesStore.selectedNote.content || '')
 })
 
 function onEdit() {
   editing.value = true
 }
 
-// 仅在有变更时保存，返回 'saved' | 'nochange' | 'failed'
 async function saveIfDirty() {
-  if (!selectedNote.value || !hasUnsavedChanges.value) return 'nochange'
+  if (!standaloneNotesStore.selectedNote || !standaloneNotesStore.hasUnsavedChanges) return 'nochange'
   saving.value = true
-  const updated = await updateNote(selectedNote.value.id, {
+  const updated = await standaloneNotesStore.updateNote(standaloneNotesStore.selectedNote.id, {
     title: title.value,
     content: content.value,
   })
   saving.value = false
   if (updated) {
-    hasUnsavedChanges.value = false
+    standaloneNotesStore.hasUnsavedChanges = false
     return 'saved'
   }
   return 'failed'
@@ -156,39 +151,38 @@ async function onSave() {
   if (result === 'saved') {
     saved.value = true
     editing.value = false
-    showToast('笔记已保存')
+    toastStore.showToast('笔记已保存')
     if (saveTimer) clearTimeout(saveTimer)
     saveTimer = setTimeout(() => { saved.value = false }, 2000)
   } else if (result === 'nochange') {
     editing.value = false
     saved.value = true
-    showToast('已是最新')
+    toastStore.showToast('已是最新')
     if (saveTimer) clearTimeout(saveTimer)
     saveTimer = setTimeout(() => { saved.value = false }, 2000)
   } else if (result === 'failed') {
-    showToast('保存失败', 'error')
+    toastStore.showToast('保存失败', 'error')
   }
 }
 
 function onCancel() {
-  if (selectedNote.value) {
-    title.value = selectedNote.value.title || ''
-    content.value = selectedNote.value.content || ''
+  if (standaloneNotesStore.selectedNote) {
+    title.value = standaloneNotesStore.selectedNote.title || ''
+    content.value = standaloneNotesStore.selectedNote.content || ''
   }
   editing.value = false
 }
 
-// ── 图片上传 ──
 async function onUploadImg(files, callback) {
   const urls = await Promise.all(
     files.map(async (file) => {
-      return await uploadImage(file)
+      return await standaloneNotesStore.uploadImage(file)
     })
   )
   callback(urls)
 }
 
-const editorTheme = computed(() => theme.value === 'dark' ? 'dark' : 'light')
+const editorTheme = computed(() => themeStore.theme === 'dark' ? 'dark' : 'light')
 
 function patchEditorBg() {
   setTimeout(() => {
@@ -203,16 +197,15 @@ function patchEditorBg() {
 }
 watch(editing, (v) => { if (v) patchEditorBg() })
 
-// 注册自动保存回调
 onMounted(() => {
-  registerSaveCallback(async () => {
+  standaloneNotesStore.registerSaveCallback(async () => {
     await saveIfDirty()
   })
 })
 </script>
 
 <template>
-  <div v-if="!selectedNote" class="detail-panel note-editor-panel">
+  <div v-if="!standaloneNotesStore.selectedNote" class="detail-panel note-editor-panel">
     <div class="detail-empty">
       <div class="note-empty-icon">
         <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.25">

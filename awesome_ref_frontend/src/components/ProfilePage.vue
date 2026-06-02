@@ -1,18 +1,17 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useStats } from '../composables/useStats.js'
-import { useAuth } from '../composables/useAuth.js'
-import { useToast } from '../composables/useToast.js'
+import { useStatsStore } from '../stores/stats.js'
+import { useAuthStore } from '../stores/auth.js'
+import { useToastStore } from '../stores/toast.js'
 
-const { stats, loading, loadStats } = useStats()
-const { logout, changePassword, getHeaders } = useAuth()
-const { showToast } = useToast()
+const statsStore = useStatsStore()
+const auth = useAuthStore()
+const toastStore = useToastStore()
 
 onMounted(() => {
-  loadStats()
+  statsStore.loadStats()
 })
 
-// 修改密码
 const showPwdModal = ref(false)
 const oldPwd = ref('')
 const newPwd = ref('')
@@ -32,9 +31,9 @@ async function onPwdSubmit() {
   pwdError.value = ''
   pwdLoading.value = true
   try {
-    await changePassword(oldPwd.value, newPwd.value, confirmPwd.value)
+    await auth.changePassword(oldPwd.value, newPwd.value, confirmPwd.value)
     showPwdModal.value = false
-    logout()
+    auth.logout()
   } catch (e) {
     pwdError.value = e.message
   } finally {
@@ -42,13 +41,12 @@ async function onPwdSubmit() {
   }
 }
 
-// 导出数据
 const showExportModal = ref(false)
 
 async function doExport(format, ext) {
   showExportModal.value = false
   try {
-    const res = await fetch(`/api/export?format=${format}`, { headers: getHeaders() })
+    const res = await fetch(`/api/export?format=${format}`, { headers: auth.getHeaders() })
     if (!res.ok) throw new Error('导出失败')
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
@@ -58,9 +56,9 @@ async function doExport(format, ext) {
     a.download = `awesomeref-export-${date}.${ext}`
     a.click()
     URL.revokeObjectURL(url)
-    showToast('导出成功')
+    toastStore.showToast('导出成功')
   } catch (e) {
-    showToast('导出失败: ' + e.message, 'error')
+    toastStore.showToast('导出失败: ' + e.message, 'error')
   }
 }
 
@@ -87,8 +85,8 @@ function formatShortDate(iso) {
 }
 
 const maxTypeCount = computed(() => {
-  if (!stats.value) return 1
-  const vals = Object.values(stats.value.type_distribution)
+  if (!statsStore.stats) return 1
+  const vals = Object.values(statsStore.stats.type_distribution)
   return Math.max(...vals, 1)
 })
 
@@ -97,8 +95,8 @@ function barPercent(count) {
 }
 
 const maxYearCount = computed(() => {
-  if (!stats.value) return 1
-  const vals = Object.values(stats.value.year_distribution)
+  if (!statsStore.stats) return 1
+  const vals = Object.values(statsStore.stats.year_distribution)
   return Math.max(...vals, 1)
 })
 
@@ -107,8 +105,8 @@ function yearBarHeight(count) {
 }
 
 const maxMonthlyCount = computed(() => {
-  if (!stats.value?.monthly_trend) return 1
-  return Math.max(...stats.value.monthly_trend.map(m => m.count), 1)
+  if (!statsStore.stats?.monthly_trend) return 1
+  return Math.max(...statsStore.stats.monthly_trend.map(m => m.count), 1)
 })
 
 function monthlyBarHeight(count) {
@@ -121,12 +119,12 @@ function shortMonth(ym) {
   return parts[1] + '月'
 }
 
-const hasData = computed(() => stats.value && stats.value.total_references > 0)
+const hasData = computed(() => statsStore.stats && statsStore.stats.total_references > 0)
 </script>
 
 <template>
   <div class="profile-page">
-    <div v-if="loading" class="profile-loading">
+    <div v-if="statsStore.loading" class="profile-loading">
       <div class="loading-spinner">
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
           <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
@@ -135,12 +133,12 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
       </div>
     </div>
 
-    <div v-else-if="stats" class="profile-content">
+    <div v-else-if="statsStore.stats" class="profile-content">
       <!-- User Hero -->
       <section class="profile-hero">
-        <div class="profile-avatar">{{ (stats.username || '?')[0].toUpperCase() }}</div>
-        <h2 class="profile-username">{{ stats.username }}</h2>
-        <p class="profile-since">注册于 {{ formatDate(stats.registration_date) }}</p>
+        <div class="profile-avatar">{{ (statsStore.stats.username || '?')[0].toUpperCase() }}</div>
+        <h2 class="profile-username">{{ statsStore.stats.username }}</h2>
+        <p class="profile-since">注册于 {{ formatDate(statsStore.stats.registration_date) }}</p>
         <div class="profile-hero-actions">
           <button class="profile-action-btn" @click="openPwdModal" title="修改密码">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -166,7 +164,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
             </svg>
           </div>
-          <div class="stat-number">{{ stats.total_references }}</div>
+          <div class="stat-number">{{ statsStore.stats.total_references }}</div>
           <div class="stat-label">文献总数</div>
         </div>
         <div class="stat-card">
@@ -177,7 +175,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
               <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
             </svg>
           </div>
-          <div class="stat-number">{{ stats.total_standalone_notes + stats.total_ref_notes }}</div>
+          <div class="stat-number">{{ statsStore.stats.total_standalone_notes + statsStore.stats.total_ref_notes }}</div>
           <div class="stat-label">笔记总数</div>
         </div>
         <div class="stat-card">
@@ -186,7 +184,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
             </svg>
           </div>
-          <div class="stat-number">{{ stats.total_groups }}</div>
+          <div class="stat-number">{{ statsStore.stats.total_groups }}</div>
           <div class="stat-label">分组数</div>
         </div>
         <div class="stat-card">
@@ -197,7 +195,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
               <path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/>
             </svg>
           </div>
-          <div class="stat-number">{{ stats.pdf_attachment_rate }}%</div>
+          <div class="stat-number">{{ statsStore.stats.pdf_attachment_rate }}%</div>
           <div class="stat-label">PDF 附件率</div>
         </div>
       </section>
@@ -205,29 +203,29 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
       <!-- Quick Stats Row -->
       <section class="profile-quick-stats" v-if="hasData">
         <div class="quick-stat">
-          <span class="quick-stat-value">{{ stats.refs_this_week }}</span>
+          <span class="quick-stat-value">{{ statsStore.stats.refs_this_week }}</span>
           <span class="quick-stat-label">本周新增文献</span>
         </div>
         <div class="quick-stat-divider"></div>
         <div class="quick-stat">
-          <span class="quick-stat-value">{{ stats.refs_this_month }}</span>
+          <span class="quick-stat-value">{{ statsStore.stats.refs_this_month }}</span>
           <span class="quick-stat-label">本月新增文献</span>
         </div>
         <div class="quick-stat-divider"></div>
         <div class="quick-stat">
-          <span class="quick-stat-value">{{ stats.notes_this_week }}</span>
+          <span class="quick-stat-value">{{ statsStore.stats.notes_this_week }}</span>
           <span class="quick-stat-label">本周新增笔记</span>
         </div>
         <div class="quick-stat-divider"></div>
         <div class="quick-stat">
-          <span class="quick-stat-value">{{ stats.note_coverage }}%</span>
+          <span class="quick-stat-value">{{ statsStore.stats.note_coverage }}%</span>
           <span class="quick-stat-label">文献笔记覆盖率</span>
         </div>
       </section>
 
       <template v-if="hasData">
         <!-- Monthly Trend -->
-        <section class="profile-section" v-if="stats.monthly_trend && stats.monthly_trend.some(m => m.count > 0)">
+        <section class="profile-section" v-if="statsStore.stats.monthly_trend && statsStore.stats.monthly_trend.some(m => m.count > 0)">
           <div class="profile-section-header">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -236,7 +234,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
           </div>
           <div class="year-chart-wrapper">
             <div class="year-chart">
-              <div v-for="item in stats.monthly_trend" :key="item.month" class="year-bar-wrapper">
+              <div v-for="item in statsStore.stats.monthly_trend" :key="item.month" class="year-bar-wrapper">
                 <div class="year-bar" :style="{ height: monthlyBarHeight(item.count) + 'px' }"></div>
                 <span class="year-label">{{ shortMonth(item.month) }}</span>
               </div>
@@ -245,7 +243,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
         </section>
 
         <!-- Type Distribution -->
-        <section class="profile-section" v-if="Object.keys(stats.type_distribution).length > 0">
+        <section class="profile-section" v-if="Object.keys(statsStore.stats.type_distribution).length > 0">
           <div class="profile-section-header">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -254,7 +252,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
             文献类型分布
           </div>
           <div class="bar-chart">
-            <div v-for="(count, type) in stats.type_distribution" :key="type" class="bar-row">
+            <div v-for="(count, type) in statsStore.stats.type_distribution" :key="type" class="bar-row">
               <span class="bar-label">{{ typeName(type) }}</span>
               <div class="bar-track">
                 <div class="bar-fill" :style="{ width: barPercent(count) + '%' }"></div>
@@ -265,7 +263,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
         </section>
 
         <!-- Year Distribution -->
-        <section class="profile-section" v-if="Object.keys(stats.year_distribution).length > 0">
+        <section class="profile-section" v-if="Object.keys(statsStore.stats.year_distribution).length > 0">
           <div class="profile-section-header">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -273,11 +271,11 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
               <line x1="3" y1="10" x2="21" y2="10"/>
             </svg>
             年份分布
-            <span v-if="stats.year_span" class="profile-section-badge">{{ stats.year_span }} · {{ stats.unique_years }} 个年份</span>
+            <span v-if="statsStore.stats.year_span" class="profile-section-badge">{{ statsStore.stats.year_span }} · {{ statsStore.stats.unique_years }} 个年份</span>
           </div>
           <div class="year-chart-wrapper">
             <div class="year-chart">
-              <div v-for="(count, year) in stats.year_distribution" :key="year" class="year-bar-wrapper">
+              <div v-for="(count, year) in statsStore.stats.year_distribution" :key="year" class="year-bar-wrapper">
                 <div class="year-bar" :style="{ height: yearBarHeight(count) + 'px' }"></div>
                 <span class="year-label">{{ year }}</span>
               </div>
@@ -287,7 +285,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
 
         <div class="profile-two-col">
           <!-- Top Journals -->
-          <section class="profile-section" v-if="stats.top_journals.length > 0">
+          <section class="profile-section" v-if="statsStore.stats.top_journals.length > 0">
             <div class="profile-section-header">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
@@ -296,7 +294,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
               期刊 Top 10
             </div>
             <div class="ranking-list">
-              <div v-for="(item, i) in stats.top_journals" :key="i" class="ranking-item">
+              <div v-for="(item, i) in statsStore.stats.top_journals" :key="i" class="ranking-item">
                 <span class="ranking-rank">{{ i + 1 }}</span>
                 <span class="ranking-name" :title="item.name">{{ item.name }}</span>
                 <span class="ranking-count">{{ item.count }}</span>
@@ -305,7 +303,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
           </section>
 
           <!-- Top Authors -->
-          <section class="profile-section" v-if="stats.top_authors.length > 0">
+          <section class="profile-section" v-if="statsStore.stats.top_authors.length > 0">
             <div class="profile-section-header">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -316,7 +314,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
               作者 Top 10
             </div>
             <div class="ranking-list">
-              <div v-for="(item, i) in stats.top_authors" :key="i" class="ranking-item">
+              <div v-for="(item, i) in statsStore.stats.top_authors" :key="i" class="ranking-item">
                 <span class="ranking-rank">{{ i + 1 }}</span>
                 <span class="ranking-name" :title="item.name">{{ item.name }}</span>
                 <span class="ranking-count">{{ item.count }}</span>
@@ -326,7 +324,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
         </div>
 
         <!-- Keywords -->
-        <section class="profile-section" v-if="stats.top_keywords.length > 0">
+        <section class="profile-section" v-if="statsStore.stats.top_keywords.length > 0">
           <div class="profile-section-header">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
@@ -335,7 +333,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
             关键词
           </div>
           <div class="keyword-cloud">
-            <span v-for="item in stats.top_keywords" :key="item.keyword" class="keyword-cloud-tag">
+            <span v-for="item in statsStore.stats.top_keywords" :key="item.keyword" class="keyword-cloud-tag">
               {{ item.keyword }}
               <span class="keyword-count">({{ item.count }})</span>
             </span>
@@ -343,7 +341,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
         </section>
 
         <!-- Most Annotated References -->
-        <section class="profile-section" v-if="stats.most_annotated && stats.most_annotated.length > 0">
+        <section class="profile-section" v-if="statsStore.stats.most_annotated && statsStore.stats.most_annotated.length > 0">
           <div class="profile-section-header">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
@@ -351,7 +349,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
             笔记最多的文献
           </div>
           <div class="ranking-list">
-            <div v-for="(item, i) in stats.most_annotated" :key="i" class="ranking-item">
+            <div v-for="(item, i) in statsStore.stats.most_annotated" :key="i" class="ranking-item">
               <span class="ranking-rank">{{ i + 1 }}</span>
               <span class="ranking-name" :title="item.title">{{ item.title }}</span>
               <span class="ranking-count">{{ item.count }} 条</span>
@@ -369,35 +367,35 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
           </div>
           <div class="insight-grid">
             <div class="insight-card">
-              <span class="insight-card-value">{{ stats.avg_authors }}</span>
+              <span class="insight-card-value">{{ statsStore.stats.avg_authors }}</span>
               <span class="insight-card-label">平均作者数 / 篇</span>
             </div>
             <div class="insight-card">
-              <span class="insight-card-value">{{ stats.refs_with_abstract }}</span>
+              <span class="insight-card-value">{{ statsStore.stats.refs_with_abstract }}</span>
               <span class="insight-card-label">有摘要的文献</span>
             </div>
             <div class="insight-card">
-              <span class="insight-card-value">{{ stats.refs_with_doi }}</span>
+              <span class="insight-card-value">{{ statsStore.stats.refs_with_doi }}</span>
               <span class="insight-card-label">有 DOI 的文献</span>
             </div>
             <div class="insight-card">
-              <span class="insight-card-value">{{ stats.pdf_size_mb }} MB</span>
+              <span class="insight-card-value">{{ statsStore.stats.pdf_size_mb }} MB</span>
               <span class="insight-card-label">PDF 存储占用</span>
             </div>
             <div class="insight-card">
-              <span class="insight-card-value">{{ stats.note_files }}</span>
+              <span class="insight-card-value">{{ statsStore.stats.note_files }}</span>
               <span class="insight-card-label">笔记文件数</span>
             </div>
             <div class="insight-card">
-              <span class="insight-card-value">{{ stats.img_count }}</span>
+              <span class="insight-card-value">{{ statsStore.stats.img_count }}</span>
               <span class="insight-card-label">上传图片数</span>
             </div>
-            <div class="insight-card" v-if="stats.trash_count > 0">
-              <span class="insight-card-value">{{ stats.trash_count }}</span>
+            <div class="insight-card" v-if="statsStore.stats.trash_count > 0">
+              <span class="insight-card-value">{{ statsStore.stats.trash_count }}</span>
               <span class="insight-card-label">回收站文献</span>
             </div>
-            <div class="insight-card" v-if="stats.year_span">
-              <span class="insight-card-value">{{ stats.year_span }}</span>
+            <div class="insight-card" v-if="statsStore.stats.year_span">
+              <span class="insight-card-value">{{ statsStore.stats.year_span }}</span>
               <span class="insight-card-label">文献年份跨度</span>
             </div>
           </div>
@@ -415,7 +413,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
       </div>
 
       <!-- Recent Activity -->
-      <section class="profile-section" v-if="stats.recent_activity.length > 0">
+      <section class="profile-section" v-if="statsStore.stats.recent_activity.length > 0">
         <div class="profile-section-header">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
@@ -424,7 +422,7 @@ const hasData = computed(() => stats.value && stats.value.total_references > 0)
           最近活动
         </div>
         <div class="timeline">
-          <div v-for="(item, i) in stats.recent_activity" :key="i" class="timeline-item">
+          <div v-for="(item, i) in statsStore.stats.recent_activity" :key="i" class="timeline-item">
             <div class="timeline-dot" :class="{ 'note-dot': item.type === 'note' }"></div>
             <div class="timeline-date">{{ formatShortDate(item.date) }}</div>
             <div class="timeline-desc">

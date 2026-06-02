@@ -1,13 +1,13 @@
 <script setup>
 import { ref } from 'vue'
-import { useGroups } from '../composables/useGroups.js'
-import { useReferences } from '../composables/useReferences.js'
-import { useToast } from '../composables/useToast.js'
+import { useGroupsStore } from '../stores/groups.js'
+import { useReferencesStore } from '../stores/references.js'
+import { useToastStore } from '../stores/toast.js'
 import ConfirmDialog from './ConfirmDialog.vue'
 
-const { groups, addGroup, deleteGroup, renameGroup, loadGroups } = useGroups()
-const { activeGroupId, setActiveGroup, references, trashCount, loadTrash, recentRefs, selectById } = useReferences()
-const { showToast } = useToast()
+const groupsStore = useGroupsStore()
+const refsStore = useReferencesStore()
+const toastStore = useToastStore()
 
 const showForm = ref(false)
 const newName = ref('')
@@ -15,13 +15,12 @@ const editingId = ref(null)
 const editName = ref('')
 const confirmState = ref({ visible: false, groupId: null })
 
-
 function onCreate() {
   if (!newName.value.trim()) return
-  addGroup(newName.value)
+  groupsStore.addGroup(newName.value)
   newName.value = ''
   showForm.value = false
-  showToast('分组创建成功')
+  toastStore.showToast('分组创建成功')
 }
 
 function onDelete(e, id) {
@@ -33,11 +32,11 @@ async function onConfirmDelete() {
   const id = confirmState.value.groupId
   confirmState.value = { visible: false, groupId: null }
   if (id) {
-    const ok = await deleteGroup(id)
+    const ok = await groupsStore.deleteGroup(id)
     if (ok) {
-      showToast('分组已删除')
-      if (activeGroupId.value === id) {
-        setActiveGroup('all')
+      toastStore.showToast('分组已删除')
+      if (refsStore.activeGroupId === id) {
+        refsStore.setActiveGroup('all')
       }
     }
   }
@@ -56,7 +55,7 @@ function onStartRename(e, group) {
 function onConfirmRename(e) {
   e.stopPropagation()
   if (editName.value.trim() && editingId.value) {
-    renameGroup(editingId.value, editName.value)
+    groupsStore.renameGroup(editingId.value, editName.value)
   }
   editingId.value = null
   editName.value = ''
@@ -69,21 +68,20 @@ function onCancelRename(e) {
 }
 
 function getCount(groupId) {
-  if (groupId === 'all') return references.value.length
-  if (groupId === 'trash') return trashCount.value
-  return references.value.filter(r => (r.groupIds || []).includes(groupId)).length
+  if (groupId === 'all') return refsStore.references.length
+  if (groupId === 'trash') return refsStore.trashCount
+  return refsStore.references.filter(r => (r.groupIds || []).includes(groupId)).length
 }
 
 async function onOpenTrash() {
-  await loadTrash()
-  setActiveGroup('trash')
+  await refsStore.loadTrash()
+  refsStore.setActiveGroup('trash')
 }
 
 function onClickRecent(refId) {
-  setActiveGroup('all')
-  selectById(refId)
+  refsStore.setActiveGroup('all')
+  refsStore.selectById(refId)
 }
-
 </script>
 
 <template>
@@ -117,8 +115,8 @@ function onClickRecent(refId) {
     <!-- 全部 -->
     <div
       class="group-item"
-      :class="{ active: activeGroupId === 'all' }"
-      @click="setActiveGroup('all')"
+      :class="{ active: refsStore.activeGroupId === 'all' }"
+      @click="refsStore.setActiveGroup('all')"
     >
       <span class="group-item-icon">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -132,7 +130,7 @@ function onClickRecent(refId) {
     <!-- 回收站 -->
     <div
       class="group-item"
-      :class="{ active: activeGroupId === 'trash' }"
+      :class="{ active: refsStore.activeGroupId === 'trash' }"
       @click="onOpenTrash"
     >
       <span class="group-item-icon">
@@ -146,11 +144,11 @@ function onClickRecent(refId) {
 
     <!-- 分组列表 -->
     <div
-      v-for="group in groups"
+      v-for="group in groupsStore.groups"
       :key="group.id"
       class="group-item"
-      :class="{ active: activeGroupId === group.id }"
-      @click="setActiveGroup(group.id)"
+      :class="{ active: refsStore.activeGroupId === group.id }"
+      @click="refsStore.setActiveGroup(group.id)"
     >
       <span class="group-item-icon">
         <svg v-if="group.id === 'ungrouped'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -191,7 +189,7 @@ function onClickRecent(refId) {
     </div>
   </div>
 
-  <div v-if="recentRefs.length" class="recent-refs">
+  <div v-if="refsStore.recentRefs.length" class="recent-refs">
     <div class="recent-refs-header">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -199,7 +197,7 @@ function onClickRecent(refId) {
       <span>最近浏览</span>
     </div>
     <div
-      v-for="r in recentRefs"
+      v-for="r in refsStore.recentRefs"
       :key="r.id"
       class="recent-ref-item"
       @click="onClickRecent(r.id)"
