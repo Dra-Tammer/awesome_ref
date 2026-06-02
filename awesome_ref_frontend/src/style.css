@@ -76,9 +76,17 @@
   background: rgba(167, 139, 250, 0.1);
   border-color: rgba(167, 139, 250, 0.2);
 }
+[data-theme="dark"] .note-editor-preview .md-editor-preview .md-editor-code {
+  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.2);
+}
+[data-theme="dark"] .note-editor-preview .md-editor-preview .md-editor-code .md-editor-code-head {
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
 [data-theme="dark"] .note-editor-preview .md-editor-preview pre {
   background: rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.06);
+  border: none;
 }
 [data-theme="dark"] .note-editor-preview .md-editor-preview blockquote {
   background: rgba(167, 139, 250, 0.06);
@@ -2992,14 +3000,69 @@ html, body {
   border: 1px solid var(--border);
 }
 
-/* Code block */
+/* Code block - override md-editor-v3 variables */
+.note-editor-preview .md-editor-preview {
+  --md-theme-code-block-bg-color: var(--bg);
+  --md-theme-code-block-color: var(--text);
+  --md-theme-code-before-bg-color: var(--surface);
+  --md-theme-code-active-color: var(--accent);
+  --md-theme-code-block-radius: 8px;
+}
+
+/* Code block container */
+.note-editor-preview .md-editor-preview .md-editor-code {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin: 16px 0;
+  background: var(--bg);
+}
+
+/* Code header bar */
+.note-editor-preview .md-editor-preview .md-editor-code .md-editor-code-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  height: 36px;
+}
+
+/* macOS-style dots */
+.note-editor-preview .md-editor-preview .md-editor-code .md-editor-code-flag span {
+  width: 10px;
+  height: 10px;
+  margin-block-start: 13px;
+}
+
+/* Language label */
+.note-editor-preview .md-editor-preview .md-editor-code .md-editor-code-lang {
+  line-height: 36px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  text-transform: lowercase;
+}
+
+/* Copy button */
+.note-editor-preview .md-editor-preview .md-editor-code .md-editor-copy-button {
+  line-height: 36px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 0 12px;
+}
+
+.note-editor-preview .md-editor-preview .md-editor-code .md-editor-copy-button:hover {
+  color: var(--accent);
+}
+
+/* Code content */
 .note-editor-preview .md-editor-preview pre {
   background: var(--bg);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 14px 18px;
   overflow-x: auto;
-  margin: 16px 0;
-  border: 1px solid var(--border);
+  margin: 0;
+  border: none;
 }
 
 .note-editor-preview .md-editor-preview pre code {
@@ -3009,7 +3072,92 @@ html, body {
   line-height: 1.7;
   color: var(--text);
   border: none;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 }
+
+/* Highlight.js theme scoping - light theme (default) */
+.note-editor-preview .md-editor-preview .hljs {
+  color: #383a42;
+  background: transparent;
+}
+.note-editor-preview .md-editor-preview .hljs-comment,
+.note-editor-preview .md-editor-preview .hljs-quote { color: #a0a1a7; font-style: italic; }
+.note-editor-preview .md-editor-preview .hljs-doctag,
+.note-editor-preview .md-editor-preview .hljs-keyword,
+.note-editor-preview .md-editor-preview .hljs-formula { color: #a626a4; }
+.note-editor-preview .md-editor-preview .hljs-section,
+.note-editor-preview .md-editor-preview .hljs-name,
+.note-editor-preview .md-editor-preview .hljs-selector-tag,
+.note-editor-preview .md-editor-preview .hljs-deletion,
+.note-editor-preview .md-editor-preview .hljs-subst { color: #e45649; }
+.note-editor-preview .md-editor-preview .hljs-literal { color: #0184bb; }
+.note-editor-preview .md-editor-preview .hljs-string,
+.note-editor-preview .md-editor-preview .hljs-regexp,
+.note-editor-preview .md-editor-preview .hljs-addition,
+.note-editor-preview .md-editor-preview .hljs-attribute,
+.note-editor-preview .md-editor-preview .hljs-meta .hljs-string { color: #50a14f; }
+.note-editor-preview .md-editor-preview .hljs-attr,
+.note-editor-preview .md-editor-preview .hljs-variable,
+.note-editor-preview .md-editor-preview .hljs-template-variable,
+.note-editor-preview .md-editor-preview .hljs-type,
+.note-editor-preview .md-editor-preview .hljs-selector-class,
+.note-editor-preview .md-editor-preview .hljs-selector-attr,
+.note-editor-preview .md-editor-preview .hljs-selector-pseudo,
+.note-editor-preview .md-editor-preview .hljs-number { color: #986801; }
+.note-editor-preview .md-editor-preview .hljs-symbol,
+.note-editor-preview .md-editor-preview .hljs-bullet,
+.note-editor-preview .md-editor-preview .hljs-link,
+.note-editor-preview .md-editor-preview .hljs-meta,
+.note-editor-preview .md-editor-preview .hljs-selector-id,
+.note-editor-preview .md-editor-preview .hljs-title { color: #4078f2; }
+.note-editor-preview .md-editor-preview .hljs-built_in,
+.note-editor-preview .md-editor-preview .hljs-title.class_,
+.note-editor-preview .md-editor-preview .hljs-class .hljs-title { color: #c18401; }
+.note-editor-preview .md-editor-preview .hljs-emphasis { font-style: italic; }
+.note-editor-preview .md-editor-preview .hljs-strong { font-weight: bold; }
+.note-editor-preview .md-editor-preview .hljs-link { text-decoration: underline; }
+
+/* Highlight.js theme scoping - dark theme */
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs {
+  color: #abb2bf;
+  background: transparent;
+}
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-comment,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-quote { color: #5c6370; font-style: italic; }
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-doctag,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-keyword,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-formula { color: #c678dd; }
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-section,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-name,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-selector-tag,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-deletion,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-subst { color: #e06c75; }
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-literal { color: #56b6c2; }
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-string,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-regexp,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-addition,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-attribute,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-meta .hljs-string { color: #98c379; }
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-attr,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-variable,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-template-variable,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-type,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-selector-class,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-selector-attr,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-selector-pseudo,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-number { color: #d19a66; }
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-symbol,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-bullet,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-link,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-meta,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-selector-id,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-title { color: #61aeee; }
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-built_in,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-title.class_,
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-class .hljs-title { color: #e6c07b; }
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-emphasis { font-style: italic; }
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-strong { font-weight: bold; }
+[data-theme="dark"] .note-editor-preview .md-editor-preview .hljs-link { text-decoration: underline; }
 
 /* Images */
 .note-editor-preview .md-editor-preview img {

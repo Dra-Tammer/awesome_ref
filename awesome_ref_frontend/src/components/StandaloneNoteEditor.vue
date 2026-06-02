@@ -1,7 +1,72 @@
 <script setup>
 import { ref, watch, computed, onMounted, nextTick } from 'vue'
-import { MdEditor, MdPreview } from 'md-editor-v3'
+import { MdEditor, MdPreview, config } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
+import hljs from 'highlight.js/lib/core'
+import 'highlight.js/styles/atom-one-light.css'
+import 'highlight.js/styles/atom-one-dark.css'
+
+// 按需加载常用语言，避免打包体积过大
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import python from 'highlight.js/lib/languages/python'
+import java from 'highlight.js/lib/languages/java'
+import cpp from 'highlight.js/lib/languages/cpp'
+import csharp from 'highlight.js/lib/languages/csharp'
+import go from 'highlight.js/lib/languages/go'
+import rust from 'highlight.js/lib/languages/rust'
+import bash from 'highlight.js/lib/languages/bash'
+import json from 'highlight.js/lib/languages/json'
+import xml from 'highlight.js/lib/languages/xml'
+import css from 'highlight.js/lib/languages/css'
+import sql from 'highlight.js/lib/languages/sql'
+import markdown from 'highlight.js/lib/languages/markdown'
+import yaml from 'highlight.js/lib/languages/yaml'
+import shell from 'highlight.js/lib/languages/shell'
+import php from 'highlight.js/lib/languages/php'
+import ruby from 'highlight.js/lib/languages/ruby'
+import swift from 'highlight.js/lib/languages/swift'
+import kotlin from 'highlight.js/lib/languages/kotlin'
+import dart from 'highlight.js/lib/languages/dart'
+import lua from 'highlight.js/lib/languages/lua'
+import r from 'highlight.js/lib/languages/r'
+import matlab from 'highlight.js/lib/languages/matlab'
+import dockerfile from 'highlight.js/lib/languages/dockerfile'
+
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('java', java)
+hljs.registerLanguage('cpp', cpp)
+hljs.registerLanguage('csharp', csharp)
+hljs.registerLanguage('go', go)
+hljs.registerLanguage('rust', rust)
+hljs.registerLanguage('bash', bash)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('xml', xml)
+hljs.registerLanguage('html', xml)
+hljs.registerLanguage('css', css)
+hljs.registerLanguage('sql', sql)
+hljs.registerLanguage('markdown', markdown)
+hljs.registerLanguage('yaml', yaml)
+hljs.registerLanguage('shell', shell)
+hljs.registerLanguage('php', php)
+hljs.registerLanguage('ruby', ruby)
+hljs.registerLanguage('swift', swift)
+hljs.registerLanguage('kotlin', kotlin)
+hljs.registerLanguage('dart', dart)
+hljs.registerLanguage('lua', lua)
+hljs.registerLanguage('r', r)
+hljs.registerLanguage('matlab', matlab)
+hljs.registerLanguage('dockerfile', dockerfile)
+
+config({
+  editorExtensions: {
+    highlight: {
+      instance: hljs
+    }
+  }
+})
 import { useStandaloneNotes } from '../composables/useStandaloneNotes.js'
 import { useTheme } from '../composables/useTheme.js'
 import { useToast } from '../composables/useToast.js'
