@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useReferencesStore } from '../stores/references.js'
 import { useNotesStore } from '../stores/notes.js'
@@ -10,15 +10,12 @@ import { useDailyTasksStore } from '../stores/dailyTasks.js'
 import Toolbar from '../components/Toolbar.vue'
 
 const router = useRouter()
-const route = useRoute()
 const auth = useAuthStore()
 const refsStore = useReferencesStore()
 const notesStore = useNotesStore()
 const groupsStore = useGroupsStore()
 const standaloneNotesStore = useStandaloneNotesStore()
 const dailyTasksStore = useDailyTasksStore()
-
-const checking = ref(true)
 
 async function loadAllData() {
   await Promise.all([
@@ -53,7 +50,6 @@ onMounted(async () => {
   if (auth.isLoggedIn) {
     await loadAllData()
   }
-  checking.value = false
 
   window.addEventListener('keydown', (e) => {
     const tag = document.activeElement?.tagName
@@ -86,16 +82,7 @@ function handleGlobalNavigate(item) {
 </script>
 
 <template>
-  <div v-if="checking" class="app-loading">
-    <div class="loading-spinner">
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
-        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-      </svg>
-      <p>加载中...</p>
-    </div>
-  </div>
-
-  <div v-else class="app">
+  <div class="app">
     <Toolbar @navigate="handleGlobalNavigate" />
     <router-view v-slot="{ Component }">
       <component :is="Component" />

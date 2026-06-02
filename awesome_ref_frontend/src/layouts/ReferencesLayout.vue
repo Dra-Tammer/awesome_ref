@@ -182,6 +182,6 @@ async function handleDropFiles(files) {
         <ReferenceDetail />
       </div>
     </aside>
+    <DropOverlay :on-files="handleDropFiles" />
   </div>
-  <DropOverlay :on-files="handleDropFiles" />
 </template>
