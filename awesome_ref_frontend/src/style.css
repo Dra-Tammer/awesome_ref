@@ -170,7 +170,7 @@ html::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
 .app-content {
   flex: 1;
-  overflow: hidden;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
