@@ -691,18 +691,21 @@ html::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 .toast-success svg { color: #10b981; }
 .toast-error svg { color: #ef4444; }
 
+[data-theme="dark"] .toast {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
 [data-theme="dark"] .toast-success {
-  background: var(--success-light);
-  color: var(--success);
-  border-color: rgba(52, 211, 153, 0.25);
+  background: rgba(46, 160, 67, 0.25);
+  color: #56d364;
+  border-color: rgba(46, 160, 67, 0.4);
 }
 [data-theme="dark"] .toast-error {
-  background: var(--danger-light);
-  color: var(--danger);
-  border-color: rgba(248, 113, 113, 0.25);
+  background: rgba(248, 81, 73, 0.25);
+  color: #ffa198;
+  border-color: rgba(248, 81, 73, 0.4);
 }
-[data-theme="dark"] .toast-success svg { color: var(--success); }
-[data-theme="dark"] .toast-error svg { color: var(--danger); }
+[data-theme="dark"] .toast-success svg { color: #56d364; }
+[data-theme="dark"] .toast-error svg { color: #ffa198; }
 
 .toast-enter-active {
   transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);

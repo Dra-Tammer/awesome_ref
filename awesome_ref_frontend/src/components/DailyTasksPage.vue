@@ -116,10 +116,10 @@ async function doAdd() {
 }
 const stOrd = ['pending', 'partial', 'done']
 async function cycle(t) { await dailyTasksStore.updateTask(t.id, { status: stOrd[(stOrd.indexOf(t.status) + 1) % 3] }); await refreshHm() }
-function togNote(t) { openNote.value = openNote.value === t.id ? null : (noteVal.value = t.note || '', t.id) }
+function togNote(t) { editId.value = null; openNote.value = openNote.value === t.id ? null : (noteVal.value = t.note || '', t.id) }
 async function saveN(t) { await dailyTasksStore.updateTask(t.id, { note: noteVal.value }); openNote.value = null }
 async function delT(t) { await dailyTasksStore.deleteTask(t.id); await refreshHm() }
-function startEd(t) { editId.value = t.id; editVal.value = t.title; nextTick(() => { const el = document.querySelector('.dt-ed'); if (el) { el.focus(); el.select() } }) }
+function startEd(t) { openNote.value = null; editId.value = t.id; editVal.value = t.title; nextTick(() => { const el = document.querySelector('.dt-ed'); if (el) { el.focus(); el.select() } }) }
 async function saveEd(t) { const v = editVal.value.trim(); if (v && v !== t.title) await dailyTasksStore.updateTask(t.id, { title: v }); editId.value = null }
 function cancEd() { editId.value = null }
 
