@@ -51,9 +51,25 @@ export function useDailyTasks() {
     }
   }
 
+  async function createPlan(date) {
+    try {
+      const res = await fetch(`/api/daily-tasks/plan/${date}`, {
+        method: 'POST',
+        headers: getHeaders(),
+      })
+      if (!res.ok) return null
+      const plan = await res.json()
+      viewingPlan.value = plan
+      viewingDate.value = plan.date
+      return plan
+    } catch {
+      return null
+    }
+  }
+
   async function loadHeatmap() {
     try {
-      const res = await fetch('/api/daily-tasks/heatmap', { headers: getHeaders() })
+      const res = await fetch('/api/daily-tasks/heatmap?t=' + Date.now(), { headers: getHeaders() })
       if (res.status === 401) return
       if (!res.ok) { heatmapData.value = []; return }
       heatmapData.value = await res.json()
@@ -72,7 +88,7 @@ export function useDailyTasks() {
       })
       if (!res.ok) return null
       const task = await res.json()
-      viewingPlan.value.tasks.push(task)
+      viewingPlan.value.tasks.unshift(task)
       return task
     } catch {
       return null
@@ -129,6 +145,7 @@ export function useDailyTasks() {
     isViewingToday,
     loadToday,
     loadPlanByDate,
+    createPlan,
     loadHeatmap,
     addTask,
     updateTask,

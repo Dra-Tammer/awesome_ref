@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import Reference, Note, User, Group
+from models import Reference, Note, User, Group, DailyPlan, DailyTask
 from deps import get_current_user
 from routers.references import _to_dict, _make_ref_key, _apply_fields
 
@@ -329,6 +329,14 @@ def export_data(
     notes = {n.ref_key: {"content": n.content}
              for n in db.query(Note).filter(Note.user_id == user.id).all()}
 
+    daily_plans = []
+    for plan in db.query(DailyPlan).filter(DailyPlan.user_id == user.id).all():
+        tasks = sorted(plan.tasks, key=lambda t: (t.sort_order, t.id))
+        daily_plans.append({
+            "date": plan.date,
+            "tasks": [{"title": t.title, "status": t.status, "note": t.note or "", "sortOrder": t.sort_order} for t in tasks],
+        })
+
     exported_at = datetime.now(timezone.utc).isoformat()
 
     if fmt == "md":
@@ -361,11 +369,12 @@ def export_data(
 
     # Default: json
     return {
-        "export_version": "1.0",
+        "export_version": "1.1",
         "exported_at": exported_at,
         "groups": groups,
         "references": references,
         "notes": notes,
+        "daily_plans": daily_plans,
     }
 
 
@@ -375,6 +384,7 @@ class ImportData(BaseModel):
     groups: list = []
     references: list = []
     notes: dict = {}
+    daily_plans: list = []
 
 
 @router.post("/import")
@@ -457,6 +467,35 @@ def import_data(data: ImportData, user: User = Depends(get_current_user), db: Se
         else:
             note = Note(user_id=user.id, ref_key=ref_key, content=content, updated_at=now)
             db.add(note)
+
+    db.commit()
+
+    # Import daily plans
+    for plan_data in data.daily_plans:
+        date = plan_data.get("date", "").strip()
+        if not date:
+            continue
+        plan = db.query(DailyPlan).filter(DailyPlan.user_id == user.id, DailyPlan.date == date).first()
+        if not plan:
+            plan = DailyPlan(user_id=user.id, date=date)
+            db.add(plan)
+            db.flush()
+
+        tasks_data = plan_data.get("tasks", [])
+        # Clear existing tasks and re-import
+        for t in list(plan.tasks):
+            db.delete(t)
+        db.flush()
+
+        for i, td in enumerate(tasks_data):
+            task = DailyTask(
+                plan_id=plan.id,
+                title=td.get("title", ""),
+                status=td.get("status", "pending"),
+                note=td.get("note", ""),
+                sort_order=td.get("sortOrder", i),
+            )
+            db.add(task)
 
     db.commit()
     return {"success": True}

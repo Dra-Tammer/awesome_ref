@@ -130,6 +130,18 @@ export const useDailyTasksStore = defineStore('dailyTasks', () => {
     }
   }
 
+  async function searchTasks(query) {
+    const q = (query || '').trim()
+    if (!q) return []
+    try {
+      const res = await fetch(`/api/daily-tasks/search?q=${encodeURIComponent(q)}`, { headers: auth.getHeaders() })
+      if (!res.ok) return []
+      return await res.json()
+    } catch {
+      return []
+    }
+  }
+
   function resetDailyTasks() {
     todayPlan.value = null
     viewingPlan.value = null
@@ -140,6 +152,6 @@ export const useDailyTasksStore = defineStore('dailyTasks', () => {
   return {
     todayPlan, viewingPlan, viewingDate, heatmapData, isViewingToday,
     loadToday, loadPlanByDate, createPlan, loadHeatmap,
-    addTask, updateTask, deleteTask, resetDailyTasks,
+    addTask, updateTask, deleteTask, searchTasks, resetDailyTasks,
   }
 })

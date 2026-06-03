@@ -37,7 +37,7 @@ def _task_to_dict(task: DailyTask) -> dict:
 
 
 def _plan_to_dict(plan: DailyPlan) -> dict:
-    tasks = sorted(plan.tasks, key=lambda t: (t.sort_order, t.id))
+    tasks = sorted(plan.tasks, key=lambda t: (t.sort_order, t.id), reverse=True)
     return {
         "id": plan.id,
         "date": plan.date,
@@ -81,6 +81,56 @@ def get_plan_by_date(
         raise HTTPException(status_code=404, detail="该日期没有计划")
 
     return _plan_to_dict(plan)
+
+
+@router.post("/daily-tasks/plan/{date}")
+def create_plan_for_date(
+    date: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    existing = db.query(DailyPlan).filter(
+        DailyPlan.user_id == user.id,
+        DailyPlan.date == date,
+    ).first()
+
+    if existing:
+        return _plan_to_dict(existing)
+
+    plan = DailyPlan(user_id=user.id, date=date)
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return _plan_to_dict(plan)
+
+
+@router.get("/daily-tasks/search")
+def search_tasks(
+    q: str = "",
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    keyword = q.strip()
+    if not keyword:
+        return []
+
+    words = keyword.lower().split()
+    query = db.query(DailyTask).join(DailyPlan).filter(
+        DailyPlan.user_id == user.id,
+    )
+    for w in words:
+        query = query.filter(
+            DailyTask.title.ilike(f"%{w}%") | DailyTask.note.ilike(f"%{w}%")
+        )
+
+    results = []
+    for task in query.limit(20).all():
+        results.append({
+            **_task_to_dict(task),
+            "date": task.plan.date,
+        })
+
+    return results
 
 
 @router.get("/daily-tasks/heatmap")

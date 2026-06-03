@@ -77,6 +77,11 @@ function handleGlobalNavigate(item) {
   } else if (item.type === 'group') {
     router.push({ name: 'references' })
     refsStore.setActiveGroup(item.id)
+  } else if (item.type === 'task') {
+    router.push({ name: 'daily-tasks' })
+    setTimeout(() => {
+      dailyTasksStore.loadPlanByDate(item.raw.date)
+    }, 0)
   }
 }
 </script>

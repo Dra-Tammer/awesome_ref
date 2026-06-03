@@ -4,6 +4,7 @@ import { useReferencesStore } from '../stores/references.js'
 import { useStandaloneNotesStore } from '../stores/standaloneNotes.js'
 import { useGroupsStore } from '../stores/groups.js'
 import { useNotesStore } from '../stores/notes.js'
+import { useDailyTasksStore } from '../stores/dailyTasks.js'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -14,11 +15,13 @@ const refsStore = useReferencesStore()
 const standaloneNotesStore = useStandaloneNotesStore()
 const groupsStore = useGroupsStore()
 const notesStore = useNotesStore()
+const dailyTasksStore = useDailyTasksStore()
 
 const query = ref('')
 const activeIndex = ref(0)
 const inputRef = ref(null)
 const resultRef = ref(null)
+const taskResults = ref([])
 
 const MAX_PER_GROUP = 5
 
@@ -35,11 +38,22 @@ watch(() => props.visible, (v) => {
   if (v) {
     query.value = ''
     activeIndex.value = 0
+    taskResults.value = []
     nextTick(() => inputRef.value?.focus())
   }
 })
 
 watch(query, () => { activeIndex.value = 0 })
+
+let searchTimer = null
+watch(query, (q) => {
+  clearTimeout(searchTimer)
+  const trimmed = q.trim()
+  if (!trimmed) { taskResults.value = []; return }
+  searchTimer = setTimeout(async () => {
+    taskResults.value = await dailyTasksStore.searchTasks(trimmed)
+  }, 300)
+})
 
 const groupedResults = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -94,10 +108,22 @@ const groupedResults = computed(() => {
     }
   }
 
+  const tasks = []
+  for (const t of taskResults.value) {
+    if (tasks.length >= MAX_PER_GROUP) break
+    tasks.push({
+      id: t.id, type: 'task',
+      title: t.title,
+      sub: t.date + (t.note ? ' · ' + t.note.slice(0, 40) : ''),
+      raw: t,
+    })
+  }
+
   const result = []
   if (refs.length) result.push({ label: '文献', items: refs })
   if (notes.length) result.push({ label: '笔记', items: notes })
   if (grps.length) result.push({ label: '分组', items: grps })
+  if (tasks.length) result.push({ label: '任务', items: tasks })
   return result
 })
 
@@ -142,7 +168,7 @@ function goTo(item) {
 }
 
 function typeLabel(type) {
-  return type === 'ref' ? '文献' : type === 'note' ? '笔记' : '分组'
+  return type === 'ref' ? '文献' : type === 'note' ? '笔记' : type === 'task' ? '任务' : '分组'
 }
 </script>
 
@@ -159,7 +185,7 @@ function typeLabel(type) {
             <input
               ref="inputRef"
               v-model="query"
-              placeholder="搜索文献、笔记、分组..."
+              placeholder="搜索文献、笔记、分组、任务..."
               spellcheck="false"
             />
             <span class="search-panel-esc">ESC</span>
@@ -183,6 +209,9 @@ function typeLabel(type) {
                   </svg>
                   <svg v-else-if="item.type === 'note'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  <svg v-else-if="item.type === 'task'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
                   </svg>
                   <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
@@ -224,6 +253,12 @@ function typeLabel(type) {
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
               </svg>
               <span>搜索分组名称</span>
+            </div>
+            <div class="search-panel-hint-row">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              </svg>
+              <span>搜索每日任务标题和备注</span>
             </div>
           </div>
 
