@@ -120,6 +120,34 @@ function shortMonth(ym) {
 }
 
 const hasData = computed(() => statsStore.stats && statsStore.stats.total_references > 0)
+
+const topKeywordCount = computed(() => {
+  if (!statsStore.stats?.top_keywords?.length) return 1
+  return Math.max(...statsStore.stats.top_keywords.map(k => k.count), 1)
+})
+
+function keywordSize(count) {
+  const ratio = count / topKeywordCount.value
+  return 0.75 + ratio * 0.75 // 0.75rem ~ 1.5rem
+}
+
+const topJournalCount = computed(() => {
+  if (!statsStore.stats?.top_journals?.length) return 1
+  return statsStore.stats.top_journals[0]?.count || 1
+})
+
+function journalBarPercent(count) {
+  return (count / topJournalCount.value) * 100
+}
+
+const topAuthorCount = computed(() => {
+  if (!statsStore.stats?.top_authors?.length) return 1
+  return statsStore.stats.top_authors[0]?.count || 1
+})
+
+function authorBarPercent(count) {
+  return (count / topAuthorCount.value) * 100
+}
 </script>
 
 <template>
@@ -235,7 +263,10 @@ const hasData = computed(() => statsStore.stats && statsStore.stats.total_refere
           <div class="year-chart-wrapper">
             <div class="year-chart">
               <div v-for="item in statsStore.stats.monthly_trend" :key="item.month" class="year-bar-wrapper">
-                <div class="year-bar" :style="{ height: monthlyBarHeight(item.count) + 'px' }"></div>
+                <div class="year-bar-group">
+                  <span v-if="item.count > 0" class="year-bar-value">{{ item.count }}</span>
+                  <div class="year-bar" :style="{ height: monthlyBarHeight(item.count) + 'px' }"></div>
+                </div>
                 <span class="year-label">{{ shortMonth(item.month) }}</span>
               </div>
             </div>
@@ -276,7 +307,10 @@ const hasData = computed(() => statsStore.stats && statsStore.stats.total_refere
           <div class="year-chart-wrapper">
             <div class="year-chart">
               <div v-for="(count, year) in statsStore.stats.year_distribution" :key="year" class="year-bar-wrapper">
-                <div class="year-bar" :style="{ height: yearBarHeight(count) + 'px' }"></div>
+                <div class="year-bar-group">
+                  <span v-if="count > 0" class="year-bar-value">{{ count }}</span>
+                  <div class="year-bar" :style="{ height: yearBarHeight(count) + 'px' }"></div>
+                </div>
                 <span class="year-label">{{ year }}</span>
               </div>
             </div>
@@ -294,9 +328,14 @@ const hasData = computed(() => statsStore.stats && statsStore.stats.total_refere
               期刊 Top 10
             </div>
             <div class="ranking-list">
-              <div v-for="(item, i) in statsStore.stats.top_journals" :key="i" class="ranking-item">
+              <div v-for="(item, i) in statsStore.stats.top_journals" :key="i" class="ranking-item ranking-item-bar">
                 <span class="ranking-rank">{{ i + 1 }}</span>
-                <span class="ranking-name" :title="item.name">{{ item.name }}</span>
+                <div class="ranking-info">
+                  <span class="ranking-name" :title="item.name">{{ item.name }}</span>
+                  <div class="ranking-bar-track">
+                    <div class="ranking-bar-fill" :style="{ width: journalBarPercent(item.count) + '%' }"></div>
+                  </div>
+                </div>
                 <span class="ranking-count">{{ item.count }}</span>
               </div>
             </div>
@@ -314,9 +353,14 @@ const hasData = computed(() => statsStore.stats && statsStore.stats.total_refere
               作者 Top 10
             </div>
             <div class="ranking-list">
-              <div v-for="(item, i) in statsStore.stats.top_authors" :key="i" class="ranking-item">
+              <div v-for="(item, i) in statsStore.stats.top_authors" :key="i" class="ranking-item ranking-item-bar">
                 <span class="ranking-rank">{{ i + 1 }}</span>
-                <span class="ranking-name" :title="item.name">{{ item.name }}</span>
+                <div class="ranking-info">
+                  <span class="ranking-name" :title="item.name">{{ item.name }}</span>
+                  <div class="ranking-bar-track">
+                    <div class="ranking-bar-fill" :style="{ width: authorBarPercent(item.count) + '%' }"></div>
+                  </div>
+                </div>
                 <span class="ranking-count">{{ item.count }}</span>
               </div>
             </div>
@@ -333,7 +377,8 @@ const hasData = computed(() => statsStore.stats && statsStore.stats.total_refere
             关键词
           </div>
           <div class="keyword-cloud">
-            <span v-for="item in statsStore.stats.top_keywords" :key="item.keyword" class="keyword-cloud-tag">
+            <span v-for="item in statsStore.stats.top_keywords" :key="item.keyword" class="keyword-cloud-tag"
+              :style="{ fontSize: keywordSize(item.count) + 'rem' }">
               {{ item.keyword }}
               <span class="keyword-count">({{ item.count }})</span>
             </span>
