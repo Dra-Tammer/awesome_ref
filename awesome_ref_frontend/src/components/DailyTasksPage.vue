@@ -91,13 +91,15 @@ function hLevel(i) {
 function cellCls(d) {
   if (!d) return {}
   const lv = hLevel(d)
-  return { l0: lv === 0, l1: lv === 1, l2: lv === 2, l3: lv === 3, l4: lv === 4, today: d.isToday, sel: d.date === curDate.value }
+  return { l0: lv === 0, l1: lv === 1, l2: lv === 2, l3: lv === 3, l4: lv === 4, today: d.isToday, sel: d.date === curDate.value, 'has-partial': d.data && d.data.partial > 0 }
 }
 
 const tipD = ref(''), tipI = ref(''), tipOn = ref(false), tipX = ref(0), tipY = ref(0)
 function tipShow(e, i) {
   if (!i?.data) { tipOn.value = false; return }
-  tipD.value = i.date; tipI.value = `${i.data.total} 个任务 · 完成 ${i.data.done} · 部分 ${i.data.partial}`
+  tipD.value = i.date
+  const pending = i.data.total - i.data.done - i.data.partial
+  tipI.value = `${i.data.done} 完成 · ${i.data.partial} 部分完成 · ${pending} 未完成`
   tipOn.value = true
   const r = e.target.getBoundingClientRect(); tipX.value = r.left + r.width / 2; tipY.value = r.top - 8
 }
@@ -225,7 +227,9 @@ onMounted(async () => {
         <span class="dt-sp"></span>
         <span class="dt-sv dt-ok"><b>{{ done }}</b> 完成</span>
         <span class="dt-sp"></span>
-        <span class="dt-sv dt-wi"><b>{{ total - done }}</b> 未完成</span>
+        <span class="dt-sv dt-pa"><b>{{ partial }}</b> 部分</span>
+        <span class="dt-sp"></span>
+        <span class="dt-sv dt-wi"><b>{{ total - done - partial }}</b> 未完成</span>
       </div>
 
       <p v-if="isToday" class="dt-qt">{{ quote }}</p>
@@ -323,8 +327,11 @@ onMounted(async () => {
         <div class="dt-rc">
           <div v-for="i in recent" :key="i.date" class="dt-ri" :class="{ active: i.date === curDate }" @click="!isFut(i.date) && dailyTasksStore.loadPlanByDate(i.date)">
             <span class="dt-rd">{{ i.date.slice(5) }}</span>
-            <div class="dt-rb"><div class="dt-rf" :style="{ width: i.total ? ((i.done + i.partial * .5) / i.total * 100) + '%' : '0%' }"></div></div>
-            <span class="dt-rn">{{ i.done + i.partial }}/{{ i.total }}</span>
+            <div class="dt-rb">
+              <div class="dt-rf dt-rf-done" :style="{ width: i.total ? (i.done / i.total * 100) + '%' : '0%' }"></div>
+              <div class="dt-rf dt-rf-partial" :style="{ width: i.total ? (i.partial / i.total * 100) + '%' : '0%' }"></div>
+            </div>
+            <span class="dt-rn"><span class="dt-rn-done">{{ i.done }}</span><span class="dt-rn-partial">{{ i.partial }}</span><span class="dt-rn-pending">{{ i.total - i.done - i.partial }}</span></span>
           </div>
         </div>
       </div>
