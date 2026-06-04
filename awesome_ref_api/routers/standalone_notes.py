@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import case
 
-from database import get_db
+from database import get_db, utc_isoformat
 from models import StandaloneNote, User
 from deps import get_current_user
 
@@ -69,8 +69,8 @@ def list_notes(user: User = Depends(get_current_user), db: Session = Depends(get
             "title": n.title,
             "content": content,
             "pinned": bool(n.pinned),
-            "createdAt": n.created_at.isoformat() if n.created_at else "",
-            "updatedAt": n.updated_at.isoformat() if n.updated_at else "",
+            "createdAt": utc_isoformat(n.created_at),
+            "updatedAt": utc_isoformat(n.updated_at),
         })
     return result
 
@@ -106,8 +106,8 @@ def create_note(req: NoteCreateRequest, user: User = Depends(get_current_user), 
         "title": note.title,
         "content": "",
         "pinned": False,
-        "createdAt": note.created_at.isoformat(),
-        "updatedAt": note.updated_at.isoformat(),
+        "createdAt": utc_isoformat(note.created_at),
+        "updatedAt": utc_isoformat(note.updated_at),
     }
 
 
@@ -160,8 +160,8 @@ def update_note(note_id: int, req: NoteUpdateRequest, user: User = Depends(get_c
         "title": note.title,
         "content": content,
         "pinned": bool(note.pinned),
-        "createdAt": note.created_at.isoformat(),
-        "updatedAt": note.updated_at.isoformat(),
+        "createdAt": utc_isoformat(note.created_at),
+        "updatedAt": utc_isoformat(note.updated_at),
     }
 
 

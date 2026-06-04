@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from database import get_db
+from database import get_db, utc_isoformat
 from models import Note, User
 from deps import get_current_user
 
@@ -26,7 +26,7 @@ def get_notes(user: User = Depends(get_current_user), db: Session = Depends(get_
     rows = db.query(Note).filter(Note.user_id == user.id).all()
     result = {}
     for n in rows:
-        result[n.ref_key] = {"content": n.content, "updatedAt": n.updated_at.isoformat() if n.updated_at else ""}
+        result[n.ref_key] = {"content": n.content, "updatedAt": utc_isoformat(n.updated_at)}
     return result
 
 
@@ -50,7 +50,7 @@ def save_note(req: NoteRequest, user: User = Depends(get_current_user), db: Sess
         db.add(note)
     db.commit()
     db.refresh(note)
-    return {"success": True, "note": {"content": note.content, "updatedAt": note.updated_at.isoformat()}}
+    return {"success": True, "note": {"content": note.content, "updatedAt": utc_isoformat(note.updated_at)}}
 
 
 @router.delete("/notes/{ref_key}")

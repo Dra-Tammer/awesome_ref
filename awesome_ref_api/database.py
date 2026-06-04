@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
@@ -21,3 +22,12 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def utc_isoformat(dt: datetime | None) -> str:
+    """将 naive UTC datetime 转为带时区标识的 ISO 字符串，修复前端时区偏差问题。"""
+    if dt is None:
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()

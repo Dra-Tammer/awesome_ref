@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from database import get_db
+from database import get_db, utc_isoformat
 from models import Group, User
 from deps import get_current_user
 
@@ -25,7 +25,7 @@ def _ensure_default_group(db: Session, user_id: int) -> Group:
 def get_groups(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     _ensure_default_group(db, user.id)
     rows = db.query(Group).filter(Group.user_id == user.id).all()
-    return [{"id": r.group_key, "name": r.name, "createdAt": r.created_at.isoformat() if r.created_at else ""} for r in rows]
+    return [{"id": r.group_key, "name": r.name, "createdAt": utc_isoformat(r.created_at)} for r in rows]
 
 
 class GroupRequest(BaseModel):
@@ -45,7 +45,7 @@ def create_group(req: GroupRequest, user: User = Depends(get_current_user), db: 
     db.add(g)
     db.commit()
     db.refresh(g)
-    return {"id": g.group_key, "name": g.name, "createdAt": g.created_at.isoformat() if g.created_at else ""}
+    return {"id": g.group_key, "name": g.name, "createdAt": utc_isoformat(g.created_at)}
 
 
 @router.put("/groups/{group_key}")

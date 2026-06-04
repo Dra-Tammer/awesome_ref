@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from database import get_db
+from database import get_db, utc_isoformat
 from deps import get_current_user
 from models import User, Reference, Note, StandaloneNote, Group
 
@@ -243,16 +243,16 @@ def get_stats(current_user: User = Depends(get_current_user), db: Session = Depe
     activity = []
     for title, dt in recent_refs:
         if dt:
-            activity.append({"type": "ref", "title": title or "无标题", "date": dt.isoformat()})
+            activity.append({"type": "ref", "title": title or "无标题", "date": utc_isoformat(dt)})
     for title, dt in recent_notes:
         if dt:
-            activity.append({"type": "note", "title": title or "无标题笔记", "date": dt.isoformat()})
+            activity.append({"type": "note", "title": title or "无标题笔记", "date": utc_isoformat(dt)})
     activity.sort(key=lambda x: x["date"], reverse=True)
     activity = activity[:20]
 
     return {
         "username": current_user.username,
-        "registration_date": current_user.created_at.isoformat() if current_user.created_at else "",
+        "registration_date": utc_isoformat(current_user.created_at),
         "total_references": total_refs,
         "total_standalone_notes": total_notes,
         "total_ref_notes": total_ref_notes,

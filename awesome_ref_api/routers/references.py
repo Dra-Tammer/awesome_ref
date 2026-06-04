@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from database import get_db
+from database import get_db, utc_isoformat
 from models import Reference, Note, User, Group
 from deps import get_current_user
 from sqlalchemy.orm import joinedload
@@ -345,7 +345,7 @@ def _to_dict(r: Reference) -> dict:
         "doi": r.doi,
         "keywords": json.loads(r.keywords_json) if r.keywords_json else [],
         "groupIds": [g.group_key for g in r.groups],
-        "deletedAt": r.deleted_at.isoformat() if r.deleted_at else None,
-        "createdAt": r.created_at.isoformat() if r.created_at else None,
+        "deletedAt": utc_isoformat(r.deleted_at),
+        "createdAt": utc_isoformat(r.created_at),
         "pdfFilename": r.pdf_filename,
     }

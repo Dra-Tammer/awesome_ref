@@ -4,7 +4,7 @@ from sqlalchemy import func
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
 
-from database import get_db
+from database import get_db, utc_isoformat
 from models import User, DailyPlan, DailyTask
 from deps import get_current_user
 
@@ -31,8 +31,8 @@ def _task_to_dict(task: DailyTask) -> dict:
         "status": task.status,
         "note": task.note or "",
         "sortOrder": task.sort_order,
-        "createdAt": task.created_at.isoformat() if task.created_at else None,
-        "updatedAt": task.updated_at.isoformat() if task.updated_at else None,
+        "createdAt": utc_isoformat(task.created_at),
+        "updatedAt": utc_isoformat(task.updated_at),
     }
 
 
@@ -41,7 +41,7 @@ def _plan_to_dict(plan: DailyPlan) -> dict:
     return {
         "id": plan.id,
         "date": plan.date,
-        "createdAt": plan.created_at.isoformat() if plan.created_at else None,
+        "createdAt": utc_isoformat(plan.created_at),
         "tasks": [_task_to_dict(t) for t in tasks],
     }
 
