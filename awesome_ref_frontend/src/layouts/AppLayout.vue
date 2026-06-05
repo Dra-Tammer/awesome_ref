@@ -24,6 +24,7 @@ async function loadAllData() {
     groupsStore.loadGroups(),
     refsStore.loadTrash(),
     standaloneNotesStore.loadNotes(),
+    standaloneNotesStore.loadTags(),
     dailyTasksStore.loadToday(),
     dailyTasksStore.loadHeatmap(),
   ])

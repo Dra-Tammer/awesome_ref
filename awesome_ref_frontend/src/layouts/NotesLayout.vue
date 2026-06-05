@@ -8,9 +8,9 @@ import NoteOutline from '../components/NoteOutline.vue'
 const standaloneNotesStore = useStandaloneNotesStore()
 
 // Left sidebar (NoteList)
-const leftWidth = ref(240)
+const leftWidth = ref(280)
 const leftCollapsed = ref(false)
-const leftPrevWidth = ref(240)
+const leftPrevWidth = ref(280)
 
 // Right sidebar (NoteOutline)
 const rightWidth = ref(360)

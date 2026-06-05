@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import case
 
 from database import get_db, utc_isoformat
-from models import StandaloneNote, User
+from models import StandaloneNote, NoteTag, note_tag_assoc, User
 from deps import get_current_user
 
 router = APIRouter()
@@ -64,11 +64,13 @@ def list_notes(user: User = Depends(get_current_user), db: Session = Depends(get
             continue
         filepath = os.path.join(NOTES_DIR, n.filename)
         content = _read_file(filepath)
+        tags = [{"id": t.id, "name": t.name, "color": t.color} for t in n.tags]
         result.append({
             "id": n.id,
             "title": n.title,
             "content": content,
             "pinned": bool(n.pinned),
+            "tags": tags,
             "createdAt": utc_isoformat(n.created_at),
             "updatedAt": utc_isoformat(n.updated_at),
         })
@@ -106,6 +108,7 @@ def create_note(req: NoteCreateRequest, user: User = Depends(get_current_user), 
         "title": note.title,
         "content": "",
         "pinned": False,
+        "tags": [],
         "createdAt": utc_isoformat(note.created_at),
         "updatedAt": utc_isoformat(note.updated_at),
     }
@@ -114,6 +117,7 @@ def create_note(req: NoteCreateRequest, user: User = Depends(get_current_user), 
 class NoteUpdateRequest(BaseModel):
     title: str | None = None
     content: str | None = None
+    tags: list[int] | None = None
 
 
 @router.put("/standalone-notes/{note_id}")
@@ -151,15 +155,24 @@ def update_note(note_id: int, req: NoteUpdateRequest, user: User = Depends(get_c
     if req.content is not None:
         _write_file(current_path, req.content)
 
+    # 更新标签关联
+    if req.tags is not None:
+        tag_objs = db.query(NoteTag).filter(
+            NoteTag.id.in_(req.tags), NoteTag.user_id == user.id
+        ).all()
+        note.tags = tag_objs
+
     note.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(note)
     content = _read_file(os.path.join(NOTES_DIR, note.filename))
+    tags = [{"id": t.id, "name": t.name, "color": t.color} for t in note.tags]
     return {
         "id": note.id,
         "title": note.title,
         "content": content,
         "pinned": bool(note.pinned),
+        "tags": tags,
         "createdAt": utc_isoformat(note.created_at),
         "updatedAt": utc_isoformat(note.updated_at),
     }
@@ -191,6 +204,42 @@ def delete_note(note_id: int, user: User = Depends(get_current_user), db: Sessio
         if os.path.exists(filepath):
             os.remove(filepath)
     db.delete(note)
+    db.commit()
+    return {"success": True}
+
+
+# --- 标签 CRUD ---
+
+
+@router.get("/standalone-notes/tags")
+def list_tags(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    tags = db.query(NoteTag).filter(NoteTag.user_id == user.id).order_by(NoteTag.name).all()
+    return [{"id": t.id, "name": t.name, "color": t.color} for t in tags]
+
+
+class TagCreateRequest(BaseModel):
+    name: str
+    color: str = "#409eff"
+
+
+@router.post("/standalone-notes/tags")
+def create_tag(req: TagCreateRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    existing = db.query(NoteTag).filter(NoteTag.user_id == user.id, NoteTag.name == req.name).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="已存在同名标签")
+    tag = NoteTag(user_id=user.id, name=req.name, color=req.color)
+    db.add(tag)
+    db.commit()
+    db.refresh(tag)
+    return {"id": tag.id, "name": tag.name, "color": tag.color}
+
+
+@router.delete("/standalone-notes/tags/{tag_id}")
+def delete_tag(tag_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    tag = db.query(NoteTag).filter(NoteTag.id == tag_id, NoteTag.user_id == user.id).first()
+    if not tag:
+        raise HTTPException(status_code=404, detail="标签不存在")
+    db.delete(tag)
     db.commit()
     return {"success": True}
 

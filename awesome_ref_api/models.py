@@ -10,6 +10,13 @@ ref_group_assoc = Table(
     Column("group_id", Integer, ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True),
 )
 
+note_tag_assoc = Table(
+    "note_tag_assoc",
+    Base.metadata,
+    Column("note_id", Integer, ForeignKey("standalone_notes.id", ondelete="CASCADE"), primary_key=True),
+    Column("tag_id", Integer, ForeignKey("note_tags.id", ondelete="CASCADE"), primary_key=True),
+)
+
 
 class User(Base):
     __tablename__ = "users"
@@ -24,6 +31,7 @@ class User(Base):
     standalone_notes = relationship("StandaloneNote", back_populates="user", cascade="all, delete-orphan")
     groups = relationship("Group", back_populates="user", cascade="all, delete-orphan")
     daily_plans = relationship("DailyPlan", back_populates="user", cascade="all, delete-orphan")
+    note_tags = relationship("NoteTag", back_populates="user", cascade="all, delete-orphan")
 
 
 class Group(Base):
@@ -93,6 +101,23 @@ class StandaloneNote(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="standalone_notes")
+    tags = relationship("NoteTag", secondary=note_tag_assoc, back_populates="standalone_notes")
+
+
+class NoteTag(Base):
+    __tablename__ = "note_tags"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String(50), nullable=False)
+    color = Column(String(20), default="#409eff")
+
+    user = relationship("User", back_populates="note_tags")
+    standalone_notes = relationship("StandaloneNote", secondary=note_tag_assoc, back_populates="tags")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_user_note_tag"),
+    )
 
 
 class DailyPlan(Base):

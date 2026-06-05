@@ -86,11 +86,13 @@ const groupedResults = computed(() => {
   const notes = []
   for (const n of standaloneNotesStore.notes) {
     if (notes.length >= MAX_PER_GROUP) break
-    if (match(n.title) || match(n.content)) {
+    const tagNames = (n.tags || []).map(t => t.name).join(' ')
+    if (match(n.title) || match(n.content) || match(tagNames)) {
       notes.push({
         id: n.id, type: 'note',
         title: n.title || '无标题笔记',
         sub: n.content ? n.content.replace(/[#*`~>\[\]()!|_\-]/g, '').trim().slice(0, 60) : '',
+        tags: n.tags || [],
         raw: n,
       })
     }
@@ -220,6 +222,12 @@ function typeLabel(type) {
                 <div class="search-panel-item-text">
                   <span class="search-panel-item-title">{{ item.title }}</span>
                   <span class="search-panel-item-sub" v-if="item.sub">{{ item.sub }}</span>
+                  <div v-if="item.tags?.length" class="note-list-card-tags" style="margin-top: 2px;">
+                    <span v-for="tag in item.tags" :key="tag.id" class="note-tag-chip" :style="{ background: tag.color + '18', color: tag.color }">
+                      <span class="tag-color-dot" :style="{ background: tag.color }"></span>
+                      {{ tag.name }}
+                    </span>
+                  </div>
                 </div>
                 <span class="search-panel-item-type">{{ typeLabel(item.type) }}</span>
               </div>
@@ -246,7 +254,7 @@ function typeLabel(type) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
               </svg>
-              <span>搜索笔记标题和内容</span>
+              <span>搜索笔记标题、内容和标签</span>
             </div>
             <div class="search-panel-hint-row">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

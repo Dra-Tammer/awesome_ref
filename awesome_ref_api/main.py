@@ -14,7 +14,7 @@ from pathlib import Path
 
 from sqlalchemy import text
 from database import engine, SessionLocal, Base
-from models import User, Reference, Note, Group, StandaloneNote, DailyPlan, DailyTask
+from models import User, Reference, Note, Group, StandaloneNote, NoteTag, DailyPlan, DailyTask
 from auth_utils import init_default_user
 from routers import auth, references, notes, groups, export, standalone_notes, stats, daily_tasks
 

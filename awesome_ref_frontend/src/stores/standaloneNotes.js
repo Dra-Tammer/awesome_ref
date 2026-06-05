@@ -9,6 +9,8 @@ export const useStandaloneNotesStore = defineStore('standaloneNotes', () => {
   const selectedNote = ref(null)
   const hasUnsavedChanges = ref(false)
   const sortMode = ref('updated')
+  const sortOrder = ref('desc') // 'desc' = 降序(新在前), 'asc' = 升序(旧在前)
+  const tags = ref([])
   let _saveCallback = null
 
   async function loadNotes() {
@@ -107,6 +109,51 @@ export const useStandaloneNotesStore = defineStore('standaloneNotes', () => {
     selectedNote.value = null
   }
 
+  async function loadTags() {
+    try {
+      const res = await fetch('/api/standalone-notes/tags', { headers: auth.getHeaders() })
+      if (res.status === 401) return
+      if (!res.ok) { tags.value = []; return }
+      tags.value = await res.json()
+    } catch { tags.value = [] }
+  }
+
+  async function createTag(name, color = '#409eff') {
+    try {
+      const res = await fetch('/api/standalone-notes/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...auth.getHeaders() },
+        body: JSON.stringify({ name, color }),
+      })
+      if (!res.ok) return null
+      const tag = await res.json()
+      tags.value.push(tag)
+      return tag
+    } catch (e) {
+      console.error('Failed to create tag:', e)
+      return null
+    }
+  }
+
+  async function deleteTag(id) {
+    try {
+      const res = await fetch(`/api/standalone-notes/tags/${id}`, {
+        method: 'DELETE',
+        headers: auth.getHeaders(),
+      })
+      if (!res.ok) return false
+      tags.value = tags.value.filter(t => t.id !== id)
+      // 同时清除 notes 中该标签的引用
+      for (const note of notes.value) {
+        if (note.tags) note.tags = note.tags.filter(t => t.id !== id)
+      }
+      return true
+    } catch (e) {
+      console.error('Failed to delete tag:', e)
+      return false
+    }
+  }
+
   function registerSaveCallback(fn) {
     _saveCallback = fn
   }
@@ -118,11 +165,12 @@ export const useStandaloneNotesStore = defineStore('standaloneNotes', () => {
   }
 
   function _sortNotes() {
+    const dir = sortOrder.value === 'asc' ? 1 : -1
     notes.value.sort((a, b) => {
       if (a.pinned !== b.pinned) return b.pinned ? 1 : -1
-      if (sortMode.value === 'title') return a.title.localeCompare(b.title)
+      if (sortMode.value === 'title') return dir * a.title.localeCompare(b.title)
       const key = sortMode.value === 'created' ? 'createdAt' : 'updatedAt'
-      return (b[key] || '').localeCompare(a[key] || '')
+      return dir * (a[key] || '').localeCompare(b[key] || '')
     })
   }
 
@@ -149,10 +197,21 @@ export const useStandaloneNotesStore = defineStore('standaloneNotes', () => {
     _sortNotes()
   }
 
+  function setSortOrder(order) {
+    sortOrder.value = order
+    _sortNotes()
+  }
+
+  function toggleSortOrder() {
+    sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
+    _sortNotes()
+  }
+
   return {
-    notes, selectedNote, hasUnsavedChanges, sortMode,
+    notes, selectedNote, hasUnsavedChanges, sortMode, sortOrder, tags,
     loadNotes, createNote, updateNote, deleteNote, uploadImage,
     selectNote, resetNotes, registerSaveCallback, isDuplicateTitle,
-    togglePin, setSortMode,
+    togglePin, setSortMode, setSortOrder, toggleSortOrder,
+    loadTags, createTag, deleteTag,
   }
 })

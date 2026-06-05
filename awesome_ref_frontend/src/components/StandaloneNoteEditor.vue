@@ -184,6 +184,22 @@ async function onUploadImg(files, callback) {
 
 const editorTheme = computed(() => themeStore.theme === 'dark' ? 'dark' : 'light')
 
+// 标签切换（类似文献分组）
+function isNoteInTag(tagId) {
+  const note = standaloneNotesStore.selectedNote
+  return note?.tags?.some(t => t.id === tagId) || false
+}
+
+async function toggleNoteTag(tagId) {
+  const note = standaloneNotesStore.selectedNote
+  if (!note) return
+  const currentIds = (note.tags || []).map(t => t.id)
+  const newIds = currentIds.includes(tagId)
+    ? currentIds.filter(id => id !== tagId)
+    : [...currentIds, tagId]
+  await standaloneNotesStore.updateNote(note.id, { tags: newIds })
+}
+
 function patchEditorBg() {
   setTimeout(() => {
     document.querySelectorAll('.note-editor-body .md-editor').forEach(el => {
@@ -231,6 +247,20 @@ onMounted(() => {
                 </span>
                 <span class="note-meta-item note-meta-wordcount">{{ wordCount }} 字</span>
               </div>
+              <!-- 标签选择（类似文献分组） -->
+              <div v-if="standaloneNotesStore.tags.length" class="note-tag-chips">
+                <span
+                  v-for="tag in standaloneNotesStore.tags"
+                  :key="tag.id"
+                  class="note-tag-chip-selectable"
+                  :class="{ active: isNoteInTag(tag.id) }"
+                  :style="isNoteInTag(tag.id) ? { background: tag.color + '20', borderColor: tag.color, color: tag.color } : {}"
+                  @click="toggleNoteTag(tag.id)"
+                >
+                  <span class="tag-color-dot" :style="{ background: isNoteInTag(tag.id) ? tag.color : 'var(--text-secondary)' }"></span>
+                  {{ tag.name }}
+                </span>
+              </div>
             </div>
             <div class="note-editor-actions">
               <span v-if="saved" class="note-status saved">
@@ -251,6 +281,20 @@ onMounted(() => {
       </div>
 
       <div v-else key="editor" class="note-editor-body">
+        <!-- 编辑模式下也显示标签选择 -->
+        <div v-if="standaloneNotesStore.tags.length" class="note-tag-chips note-tag-chips-editor">
+          <span
+            v-for="tag in standaloneNotesStore.tags"
+            :key="tag.id"
+            class="note-tag-chip-selectable"
+            :class="{ active: isNoteInTag(tag.id) }"
+            :style="isNoteInTag(tag.id) ? { background: tag.color + '20', borderColor: tag.color, color: tag.color } : {}"
+            @click="toggleNoteTag(tag.id)"
+          >
+            <span class="tag-color-dot" :style="{ background: isNoteInTag(tag.id) ? tag.color : 'var(--text-secondary)' }"></span>
+            {{ tag.name }}
+          </span>
+        </div>
         <MdEditor
           v-model="content"
           :theme="editorTheme"
