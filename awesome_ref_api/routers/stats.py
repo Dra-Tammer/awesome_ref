@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db, utc_isoformat
 from deps import get_current_user
-from models import User, Reference, Note, StandaloneNote, Group
+from models import User, Reference, Note, StandaloneNote, Group, DailyPlan, DailyTask
 
 router = APIRouter()
 
@@ -240,6 +240,15 @@ def get_stats(current_user: User = Depends(get_current_user), db: Session = Depe
         .all()
     )
 
+    recent_tasks = (
+        db.query(DailyTask.title, DailyTask.updated_at, DailyPlan.date)
+        .join(DailyPlan, DailyTask.plan_id == DailyPlan.id)
+        .filter(DailyPlan.user_id == uid)
+        .order_by(DailyTask.updated_at.desc())
+        .limit(10)
+        .all()
+    )
+
     activity = []
     for title, dt in recent_refs:
         if dt:
@@ -247,6 +256,9 @@ def get_stats(current_user: User = Depends(get_current_user), db: Session = Depe
     for title, dt in recent_notes:
         if dt:
             activity.append({"type": "note", "title": title or "无标题笔记", "date": utc_isoformat(dt)})
+    for title, dt, plan_date in recent_tasks:
+        if dt:
+            activity.append({"type": "task", "title": title or "无标题任务", "date": utc_isoformat(dt), "planDate": plan_date})
     activity.sort(key=lambda x: x["date"], reverse=True)
     activity = activity[:20]
 

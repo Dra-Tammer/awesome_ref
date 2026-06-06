@@ -471,11 +471,11 @@ function authorBarPercent(count) {
         </div>
         <div class="timeline">
           <div v-for="(item, i) in statsStore.stats.recent_activity" :key="i" class="timeline-item">
-            <div class="timeline-dot" :class="{ 'note-dot': item.type === 'note' }"></div>
+            <div class="timeline-dot" :class="{ 'note-dot': item.type === 'note', 'task-dot': item.type === 'task' }"></div>
             <div class="timeline-date">{{ formatShortDate(item.date) }}</div>
             <div class="timeline-desc">
-              <span class="timeline-type" :class="{ 'note-type': item.type === 'note' }">
-                {{ item.type === 'note' ? '笔记' : '文献' }}
+              <span class="timeline-type" :class="{ 'note-type': item.type === 'note', 'task-type': item.type === 'task' }">
+                {{ item.type === 'note' ? '笔记' : item.type === 'task' ? '任务' : '文献' }}
               </span>
               {{ item.title }}
             </div>

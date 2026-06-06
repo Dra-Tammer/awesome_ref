@@ -4925,6 +4925,22 @@ html::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   background: var(--success-light);
 }
 
+.timeline-dot.task-dot {
+  background: #f59e0b;
+}
+
+.timeline-type.task-type {
+  color: #b45309;
+  background: #fef3c7;
+}
+
+@media (prefers-color-scheme: dark) {
+  .timeline-type.task-type {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+  }
+}
+
 .keyword-count {
   font-size: 11px;
   color: var(--text-secondary);
