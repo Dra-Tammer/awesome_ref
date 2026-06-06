@@ -8,9 +8,7 @@ const auth = useAuthStore()
 
 onMounted(async () => {
   const restored = await auth.tryRestoreSession()
-  if (restored) {
-    router.push({ name: 'references' })
-  } else {
+  if (!restored) {
     router.push({ name: 'login' })
   }
 })

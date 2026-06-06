@@ -270,15 +270,6 @@ async function toggleNoteTag(note, tagId) {
               <button class="sort-dropdown-item" :class="{ active: standaloneNotesStore.sortMode === 'updated' }" @click="standaloneNotesStore.setSortMode('updated'); showSortMenu = false">更新时间</button>
               <button class="sort-dropdown-item" :class="{ active: standaloneNotesStore.sortMode === 'created' }" @click="standaloneNotesStore.setSortMode('created'); showSortMenu = false">创建时间</button>
               <button class="sort-dropdown-item" :class="{ active: standaloneNotesStore.sortMode === 'title' }" @click="standaloneNotesStore.setSortMode('title'); showSortMenu = false">标题</button>
-              <div class="sort-dropdown-divider"></div>
-              <button class="sort-dropdown-item" :class="{ active: standaloneNotesStore.sortOrder === 'desc' }" @click="standaloneNotesStore.setSortOrder('desc'); showSortMenu = false">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                降序（新在前）
-              </button>
-              <button class="sort-dropdown-item" :class="{ active: standaloneNotesStore.sortOrder === 'asc' }" @click="standaloneNotesStore.setSortOrder('asc'); showSortMenu = false">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
-                升序（旧在前）
-              </button>
             </div>
           </Transition>
         </div>

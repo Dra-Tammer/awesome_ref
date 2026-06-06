@@ -17,7 +17,12 @@ export const useReferencesStore = defineStore('references', () => {
   const sortOrder = ref('desc')
 
   const MAX_RECENT = 5
-  const recentRefs = ref(JSON.parse(localStorage.getItem('recentRefs') || '[]'))
+  let parsedRecent = []
+  try {
+    parsedRecent = JSON.parse(localStorage.getItem('recentRefs') || '[]')
+    if (!Array.isArray(parsedRecent)) parsedRecent = []
+  } catch { parsedRecent = [] }
+  const recentRefs = ref(parsedRecent)
 
   function _pushRecent(ref) {
     const entry = { id: ref.id, title: ref.title }

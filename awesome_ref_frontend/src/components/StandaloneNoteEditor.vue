@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed, onMounted, nextTick } from 'vue'
+import { ref, watch, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { MdEditor, MdPreview, config } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import hljs from 'highlight.js/lib/core'
@@ -127,6 +127,44 @@ watch([title, content], () => {
     content.value !== (standaloneNotesStore.selectedNote.content || '')
 })
 
+// 自动保存（3 秒防抖）
+let autoSaveTimer = null
+watch(content, () => {
+  if (syncingFromNote || !standaloneNotesStore.selectedNote || !editing.value) return
+  if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  autoSaveTimer = setTimeout(async () => {
+    if (standaloneNotesStore.hasUnsavedChanges) {
+      const result = await saveIfDirty()
+      if (result === 'saved') {
+        saved.value = true
+        if (saveTimer) clearTimeout(saveTimer)
+        saveTimer = setTimeout(() => { saved.value = false }, 2000)
+      }
+    }
+  }, 3000)
+})
+
+// 关闭标签页前提醒未保存内容
+function onBeforeUnload(e) {
+  if (standaloneNotesStore.hasUnsavedChanges) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('beforeunload', onBeforeUnload)
+  standaloneNotesStore.registerSaveCallback(async () => {
+    await saveIfDirty()
+  })
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', onBeforeUnload)
+  if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  if (saveTimer) clearTimeout(saveTimer)
+})
+
 function onEdit() {
   editing.value = true
 }
@@ -174,11 +212,16 @@ function onCancel() {
 }
 
 async function onUploadImg(files, callback) {
-  const urls = await Promise.all(
+  const results = await Promise.allSettled(
     files.map(async (file) => {
       return await standaloneNotesStore.uploadImage(file)
     })
   )
+  const urls = results.filter(r => r.status === 'fulfilled').map(r => r.value)
+  const failed = results.filter(r => r.status === 'rejected')
+  if (failed.length > 0) {
+    toastStore.showToast(`${failed.length} 张图片上传失败`, 'error')
+  }
   callback(urls)
 }
 
@@ -212,12 +255,6 @@ function patchEditorBg() {
   }, 50)
 }
 watch(editing, (v) => { if (v) patchEditorBg() })
-
-onMounted(() => {
-  standaloneNotesStore.registerSaveCallback(async () => {
-    await saveIfDirty()
-  })
-})
 </script>
 
 <template>

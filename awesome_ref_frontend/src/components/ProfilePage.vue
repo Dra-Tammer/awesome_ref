@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useStatsStore } from '../stores/stats.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useToastStore } from '../stores/toast.js'
@@ -7,6 +8,7 @@ import { useToastStore } from '../stores/toast.js'
 const statsStore = useStatsStore()
 const auth = useAuthStore()
 const toastStore = useToastStore()
+const router = useRouter()
 
 onMounted(() => {
   statsStore.loadStats()
@@ -34,6 +36,7 @@ async function onPwdSubmit() {
     await auth.changePassword(oldPwd.value, newPwd.value, confirmPwd.value)
     showPwdModal.value = false
     auth.logout()
+    router.push({ name: 'login' })
   } catch (e) {
     pwdError.value = e.message
   } finally {
@@ -46,7 +49,7 @@ const showExportModal = ref(false)
 async function doExport(format, ext) {
   showExportModal.value = false
   try {
-    const res = await fetch(`/api/export?format=${format}`, { headers: auth.getHeaders() })
+    const res = await fetch(`/api/export?format=${format}`, { headers: auth.getHeaders(), credentials: 'same-origin' })
     if (!res.ok) throw new Error('导出失败')
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)

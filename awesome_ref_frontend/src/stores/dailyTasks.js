@@ -130,6 +130,20 @@ export const useDailyTasksStore = defineStore('dailyTasks', () => {
     }
   }
 
+  async function copyTaskToNextDay(taskId) {
+    try {
+      const res = await fetch(`/api/daily-tasks/${taskId}/copy-to-next-day`, {
+        method: 'POST',
+        headers: auth.getHeaders(),
+      })
+      if (res.status === 409) return { success: false, reason: 'duplicate' }
+      if (!res.ok) return { success: false }
+      return await res.json()
+    } catch {
+      return { success: false }
+    }
+  }
+
   async function searchTasks(query) {
     const q = (query || '').trim()
     if (!q) return []
@@ -152,6 +166,6 @@ export const useDailyTasksStore = defineStore('dailyTasks', () => {
   return {
     todayPlan, viewingPlan, viewingDate, heatmapData, isViewingToday,
     loadToday, loadPlanByDate, createPlan, loadHeatmap,
-    addTask, updateTask, deleteTask, searchTasks, resetDailyTasks,
+    addTask, updateTask, deleteTask, copyTaskToNextDay, searchTasks, resetDailyTasks,
   }
 })

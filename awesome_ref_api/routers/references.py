@@ -173,9 +173,13 @@ def save_references(items: list[ReferenceItem], user: User = Depends(get_current
     trashed = {r.ref_key: r for r in db.query(Reference).filter(Reference.user_id == user.id, Reference.deleted_at.isnot(None)).all()}
     imported_keys = set()
 
+    import uuid as _uuid
     for item in data:
         title = (item.get("title") or "").strip()
         ref_key = _make_ref_key(title)
+        # 处理 key 碰撞: 相同 key 但不同标题时追加后缀
+        if ref_key in existing and existing[ref_key].title.lower().strip() != title.lower().strip():
+            ref_key = ref_key + _uuid.uuid4().hex[:8]
         imported_keys.add(ref_key)
         ref = existing.get(ref_key)
         trashed_ref = trashed.get(ref_key) if not ref else None
@@ -293,8 +297,8 @@ async def upload_pdf(ref_key: str, file: UploadFile, user: User = Depends(get_cu
         old_path = _pdf_path(ref.pdf_filename)
         if os.path.exists(old_path):
             os.remove(old_path)
-    # 以文献标题命名存储
-    new_filename = _sanitize_filename(ref.title) + ".pdf"
+    # 以 ref_key + 标题命名存储，避免同标题碰撞
+    new_filename = f"{ref_key}_{_sanitize_filename(ref.title)}.pdf"
     path = _pdf_path(new_filename)
     with open(path, "wb") as f:
         f.write(content)

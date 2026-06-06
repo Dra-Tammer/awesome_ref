@@ -198,10 +198,19 @@ def delete_note(note_id: int, user: User = Depends(get_current_user), db: Sessio
     note = db.query(StandaloneNote).filter(StandaloneNote.id == note_id, StandaloneNote.user_id == user.id).first()
     if not note:
         raise HTTPException(status_code=404, detail="笔记不存在")
-    # 删除 .md 文件
+    # 删除 .md 文件及其中引用的图片
     if note.filename:
         filepath = os.path.join(NOTES_DIR, note.filename)
         if os.path.exists(filepath):
+            content = _read_file(filepath)
+            image_pattern = r'/api/standalone-notes/images/([a-f0-9]+\.\w+)'
+            for match in re.finditer(image_pattern, content):
+                img_path = os.path.join(IMAGES_DIR, match.group(1))
+                if os.path.exists(img_path):
+                    try:
+                        os.remove(img_path)
+                    except OSError:
+                        pass
             os.remove(filepath)
     db.delete(note)
     db.commit()
@@ -265,7 +274,11 @@ async def upload_image(file: UploadFile, user: User = Depends(get_current_user))
 @router.get("/standalone-notes/images/{filename}")
 def get_image(filename: str, user: User = Depends(get_current_user)):
     path = os.path.join(IMAGES_DIR, filename)
-    if not os.path.exists(path):
+    real_path = os.path.realpath(path)
+    real_images_dir = os.path.realpath(IMAGES_DIR)
+    if not real_path.startswith(real_images_dir + os.sep) and real_path != real_images_dir:
+        raise HTTPException(status_code=400, detail="无效的文件路径")
+    if not os.path.exists(real_path):
         raise HTTPException(status_code=404, detail="图片不存在")
     ext = os.path.splitext(filename)[1].lower()
     media_types = {
@@ -274,4 +287,4 @@ def get_image(filename: str, user: User = Depends(get_current_user)):
         ".webp": "image/webp", ".bmp": "image/bmp",
     }
     media_type = media_types.get(ext, "application/octet-stream")
-    return FileResponse(path, media_type=media_type, content_disposition_type="inline")
+    return FileResponse(real_path, media_type=media_type, content_disposition_type="inline")

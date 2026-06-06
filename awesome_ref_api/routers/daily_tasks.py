@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel
@@ -37,7 +37,7 @@ def _task_to_dict(task: DailyTask) -> dict:
 
 
 def _plan_to_dict(plan: DailyPlan) -> dict:
-    tasks = sorted(plan.tasks, key=lambda t: (t.sort_order, t.id), reverse=True)
+    tasks = sorted(plan.tasks, key=lambda t: (t.sort_order, t.id))
     return {
         "id": plan.id,
         "date": plan.date,
@@ -46,12 +46,23 @@ def _plan_to_dict(plan: DailyPlan) -> dict:
     }
 
 
+def _local_date(tz_offset: str) -> str:
+    try:
+        sign = 1 if tz_offset[0] == '+' else -1
+        hours, minutes = map(int, tz_offset[1:].split(':'))
+        offset = timedelta(hours=sign * hours, minutes=sign * minutes)
+    except (ValueError, IndexError):
+        offset = timedelta(0)
+    return (datetime.now(timezone.utc) + offset).strftime("%Y-%m-%d")
+
+
 @router.get("/daily-tasks/today")
 def get_today_plan(
+    tz_offset: str = Query("+00:00"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = _local_date(tz_offset)
     plan = db.query(DailyPlan).filter(
         DailyPlan.user_id == user.id,
         DailyPlan.date == today,
@@ -234,3 +245,60 @@ def delete_task(
     db.delete(task)
     db.commit()
     return {"success": True}
+
+
+@router.post("/daily-tasks/{task_id}/copy-to-next-day")
+def copy_task_to_next_day(
+    task_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    task = db.query(DailyTask).join(DailyPlan).filter(
+        DailyTask.id == task_id,
+        DailyPlan.user_id == user.id,
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    # 计算下一天日期
+    plan = task.plan
+    try:
+        parts = plan.date.split('-')
+        d = datetime(int(parts[0]), int(parts[1]), int(parts[2])) + timedelta(days=1)
+        next_date = d.strftime("%Y-%m-%d")
+    except (ValueError, IndexError):
+        raise HTTPException(status_code=400, detail="日期格式错误")
+
+    # 获取或创建下一天的计划
+    next_plan = db.query(DailyPlan).filter(
+        DailyPlan.user_id == user.id,
+        DailyPlan.date == next_date,
+    ).first()
+    if not next_plan:
+        next_plan = DailyPlan(user_id=user.id, date=next_date)
+        db.add(next_plan)
+        db.flush()
+
+    # 检查下一天是否已有同名任务
+    existing = db.query(DailyTask).filter(
+        DailyTask.plan_id == next_plan.id,
+        DailyTask.title == task.title,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="下一天已有同名任务")
+
+    max_order = db.query(func.max(DailyTask.sort_order)).filter(
+        DailyTask.plan_id == next_plan.id,
+    ).scalar() or 0
+
+    new_task = DailyTask(
+        plan_id=next_plan.id,
+        title=task.title,
+        status="pending",
+        note=task.note or "",
+        sort_order=max_order + 1,
+    )
+    db.add(new_task)
+    db.commit()
+    db.refresh(new_task)
+    return {"success": True, "task": _task_to_dict(new_task), "date": next_date}

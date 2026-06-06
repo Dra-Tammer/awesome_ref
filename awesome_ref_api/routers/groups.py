@@ -73,6 +73,12 @@ def delete_group(group_key: str, user: User = Depends(get_current_user), db: Ses
         raise HTTPException(status_code=404, detail="分组不存在")
     if g.group_key == "ungrouped":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能删除默认分组")
+    # 将仅属于该分组的文献移回"未分组"
+    ungrouped = db.query(Group).filter(Group.user_id == user.id, Group.group_key == "ungrouped").first()
+    for ref in list(g.references):
+        other_groups = [grp for grp in ref.groups if grp.group_key != group_key]
+        if not other_groups and ungrouped:
+            ref.groups.append(ungrouped)
     db.delete(g)
     db.commit()
     return {"success": True}

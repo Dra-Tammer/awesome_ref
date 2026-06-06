@@ -22,6 +22,7 @@ const activeIndex = ref(0)
 const inputRef = ref(null)
 const resultRef = ref(null)
 const taskResults = ref([])
+const searching = ref(false)
 
 const MAX_PER_GROUP = 5
 
@@ -49,9 +50,14 @@ let searchTimer = null
 watch(query, (q) => {
   clearTimeout(searchTimer)
   const trimmed = q.trim()
-  if (!trimmed) { taskResults.value = []; return }
+  if (!trimmed) { taskResults.value = []; searching.value = false; return }
   searchTimer = setTimeout(async () => {
-    taskResults.value = await dailyTasksStore.searchTasks(trimmed)
+    searching.value = true
+    try {
+      taskResults.value = await dailyTasksStore.searchTasks(trimmed)
+    } finally {
+      searching.value = false
+    }
   }, 300)
 })
 
@@ -193,6 +199,14 @@ function typeLabel(type) {
             <span class="search-panel-esc">ESC</span>
           </div>
 
+          <!-- 搜索中 -->
+          <div v-if="searching" class="search-panel-loading">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </svg>
+            <span>搜索任务中...</span>
+          </div>
+
           <!-- 搜索结果 -->
           <div class="search-panel-results" ref="resultRef" v-if="groupedResults.length">
             <template v-for="(group, gi) in groupedResults" :key="gi">
@@ -281,3 +295,21 @@ function typeLabel(type) {
     </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+.search-panel-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+.search-panel-loading svg {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+</style>

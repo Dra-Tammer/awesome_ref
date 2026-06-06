@@ -1,8 +1,10 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import { useDailyTasksStore } from '../stores/dailyTasks.js'
+import { useToastStore } from '../stores/toast.js'
 
 const dailyTasksStore = useDailyTasksStore()
+const toastStore = useToastStore()
 
 const newTitle = ref('')
 const openNote = ref(null)
@@ -10,6 +12,11 @@ const noteVal = ref('')
 const adding = ref(false)
 const editId = ref(null)
 const editVal = ref('')
+const copiedTaskIds = ref(new Set())
+
+watch(() => dailyTasksStore.viewingDate, () => {
+  copiedTaskIds.value = new Set()
+})
 
 const quotes = [
   '千里之行，始于足下', '不积跬步，无以至千里', '今日事，今日毕',
@@ -44,7 +51,8 @@ const rOff = computed(() => rC * (1 - rate.value / 100))
 
 function fmtD(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 function shiftD(s, n) { const p = s.split('-'); const d = new Date(+p[0], +p[1] - 1, +p[2]); d.setDate(d.getDate() + n); return fmtD(d) }
-function isFut(s) { return s > todayStr.value }
+const tomorrowStr = computed(() => shiftD(todayStr.value, 1))
+function isFut(s) { return s > tomorrowStr.value }
 
 async function prev() { await dailyTasksStore.loadPlanByDate(shiftD(curDate.value, -1)) }
 async function next() { const n = shiftD(curDate.value, 1); if (!isFut(n)) await dailyTasksStore.loadPlanByDate(n) }
@@ -105,7 +113,7 @@ function tipShow(e, i) {
 }
 function tipHide() { tipOn.value = false }
 
-const recent = computed(() => dailyTasksStore.heatmapData.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20))
+const recent = computed(() => dailyTasksStore.heatmapData.filter(i => i.date < tomorrowStr.value).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20))
 const hmKey = ref(0)
 
 async function refreshHm() { await dailyTasksStore.loadHeatmap(); hmKey.value++ }
@@ -120,7 +128,27 @@ const stOrd = ['pending', 'partial', 'done']
 async function cycle(t) { await dailyTasksStore.updateTask(t.id, { status: stOrd[(stOrd.indexOf(t.status) + 1) % 3] }); await refreshHm() }
 function togNote(t) { editId.value = null; openNote.value = openNote.value === t.id ? null : (noteVal.value = t.note || '', t.id) }
 async function saveN(t) { await dailyTasksStore.updateTask(t.id, { note: noteVal.value }); openNote.value = null }
-async function delT(t) { await dailyTasksStore.deleteTask(t.id); await refreshHm() }
+async function delT(t) {
+  const ok = await dailyTasksStore.deleteTask(t.id)
+  if (ok) {
+    toastStore.showToast('任务已删除')
+    await refreshHm()
+  }
+}
+
+async function copyToNext(t) {
+  if (copiedTaskIds.value.has(t.id)) return
+  const result = await dailyTasksStore.copyTaskToNextDay(t.id)
+  if (result.success) {
+    copiedTaskIds.value = new Set([...copiedTaskIds.value, t.id])
+    toastStore.showToast(`已将「${t.title}」添加到 ${result.date.slice(5)}`)
+  } else if (result.reason === 'duplicate') {
+    copiedTaskIds.value = new Set([...copiedTaskIds.value, t.id])
+    toastStore.showToast('下一天已有同名任务', 'error')
+  } else {
+    toastStore.showToast('操作失败', 'error')
+  }
+}
 function startEd(t) { openNote.value = null; editId.value = t.id; editVal.value = t.title; nextTick(() => { const el = document.querySelector('.dt-ed'); if (el) { el.focus(); el.select() } }) }
 async function saveEd(t) { const v = editVal.value.trim(); if (v && v !== t.title) await dailyTasksStore.updateTask(t.id, { title: v }); editId.value = null }
 function cancEd() { editId.value = null }
@@ -163,7 +191,7 @@ function calDateStr(d) {
 
 function pickDay(d) {
   const ds = calDateStr(d)
-  if (!isFut(ds)) { dailyTasksStore.loadPlanByDate(ds); calOpen.value = false }
+  if (ds <= tomorrowStr.value) { dailyTasksStore.loadPlanByDate(ds); calOpen.value = false }
 }
 
 function onDocClick(e) {
@@ -175,6 +203,10 @@ function onDocClick(e) {
 onMounted(async () => {
   await Promise.all([dailyTasksStore.loadToday(), dailyTasksStore.loadHeatmap()])
   document.addEventListener('click', onDocClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClick)
 })
 </script>
 
@@ -213,7 +245,7 @@ onMounted(async () => {
             </div>
           </Transition>
         </div>
-        <button class="dt-nb" @click="next" :disabled="curDate >= todayStr"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+        <button class="dt-nb" @click="next" :disabled="curDate >= tomorrowStr"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
       </div>
 
       <!-- Stats -->
@@ -279,6 +311,7 @@ onMounted(async () => {
               <div class="dt-ta">
                 <button class="dt-ab" @click="startEd(t)" title="编辑"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                 <button class="dt-ab" @click="togNote(t)" title="备注"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+                <button v-if="isToday" class="dt-ab" :class="{ 'dt-copied': copiedTaskIds.has(t.id) }" :disabled="copiedTaskIds.has(t.id)" @click="copyToNext(t)" :title="copiedTaskIds.has(t.id) ? '已添加到下一天' : '添加到下一天'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg></button>
                 <button class="dt-ab dt-x" @click="delT(t)" title="删除"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
               </div>
             </div>
@@ -340,3 +373,10 @@ onMounted(async () => {
     <Teleport to="body"><Transition name="dt-tip"><div v-if="tipOn" class="dt-tip" :style="{ left: tipX + 'px', top: tipY + 'px' }"><div class="dt-tip-d">{{ tipD }}</div><div class="dt-tip-i">{{ tipI }}</div></div></Transition></Teleport>
   </div>
 </template>
+
+<style scoped>
+.dt-copied {
+  opacity: 0.35;
+  cursor: not-allowed !important;
+}
+</style>

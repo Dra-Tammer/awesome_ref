@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { useGroupsStore } from '../stores/groups.js'
 import { useReferencesStore } from '../stores/references.js'
 import { useToastStore } from '../stores/toast.js'
@@ -13,6 +13,11 @@ const showForm = ref(false)
 const newName = ref('')
 const editingId = ref(null)
 const editName = ref('')
+const newGroupInputRef = ref(null)
+
+watch(showForm, (v) => {
+  if (v) nextTick(() => newGroupInputRef.value?.focus())
+})
 const confirmState = ref({ visible: false, groupId: null })
 
 function onCreate() {
@@ -50,12 +55,20 @@ function onStartRename(e, group) {
   e.stopPropagation()
   editingId.value = group.id
   editName.value = group.name
+  nextTick(() => {
+    const el = document.querySelector('.group-rename-input')
+    if (el) { el.focus(); el.select() }
+  })
 }
 
 function onConfirmRename(e) {
-  e.stopPropagation()
-  if (editName.value.trim() && editingId.value) {
-    groupsStore.renameGroup(editingId.value, editName.value)
+  if (e) e.stopPropagation()
+  const trimmed = editName.value.trim()
+  if (trimmed && editingId.value) {
+    const group = groupsStore.groups.find(g => g.id === editingId.value)
+    if (group && group.name !== trimmed) {
+      groupsStore.renameGroup(editingId.value, editName.value)
+    }
   }
   editingId.value = null
   editName.value = ''
@@ -100,11 +113,11 @@ function onClickRecent(refId) {
     <div v-if="showForm" class="group-form">
       <input
         v-model="newName"
+        ref="newGroupInputRef"
         class="group-input"
         placeholder="分组名称"
         @keyup.enter="onCreate"
         @keyup.escape="showForm = false"
-        autofocus
       >
       <div class="group-form-actions">
         <button class="btn-sm btn-cancel" @click="showForm = false">取消</button>
@@ -167,19 +180,18 @@ function onClickRecent(refId) {
           @keyup.escape="onCancelRename"
           @blur="onConfirmRename"
           @click.stop
-          autofocus
         >
       </template>
       <template v-else>
         <span class="group-item-name">{{ group.name }}</span>
         <span class="group-item-count">{{ getCount(group.id) }}</span>
         <div class="group-item-actions" v-if="group.id !== 'ungrouped'">
-          <button class="btn-group-action" @click.stop="onStartRename($event, group)" title="重命名">
+          <button class="btn-group-action" @mousedown.prevent.stop @click="onStartRename($event, group)" title="重命名">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
             </svg>
           </button>
-          <button class="btn-group-action btn-group-delete" @click="onDelete($event, group.id)" title="删除">
+          <button class="btn-group-action btn-group-delete" @mousedown.prevent.stop @click="onDelete($event, group.id)" title="删除">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>

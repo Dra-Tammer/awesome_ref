@@ -116,3 +116,8 @@ def change_password(req: ChangePasswordRequest, user=Depends(get_current_user), 
     user.hashed_password = hash_password(req.new_password)
     db.commit()
     return {"message": "密码修改成功"}
+
+
+@router.get("/me")
+def get_me(user=Depends(get_current_user)):
+    return {"username": user.username}

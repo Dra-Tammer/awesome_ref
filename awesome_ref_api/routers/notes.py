@@ -84,7 +84,11 @@ async def upload_note_image(file: UploadFile, user: User = Depends(get_current_u
 @router.get("/notes/images/{filename}")
 def get_note_image(filename: str, user: User = Depends(get_current_user)):
     path = os.path.join(IMAGES_DIR, filename)
-    if not os.path.exists(path):
+    real_path = os.path.realpath(path)
+    real_images_dir = os.path.realpath(IMAGES_DIR)
+    if not real_path.startswith(real_images_dir + os.sep) and real_path != real_images_dir:
+        raise HTTPException(status_code=400, detail="无效的文件路径")
+    if not os.path.exists(real_path):
         raise HTTPException(status_code=404, detail="图片不存在")
     ext = os.path.splitext(filename)[1].lower()
     media_types = {
@@ -93,4 +97,4 @@ def get_note_image(filename: str, user: User = Depends(get_current_user)):
         ".webp": "image/webp", ".bmp": "image/bmp",
     }
     media_type = media_types.get(ext, "application/octet-stream")
-    return FileResponse(path, media_type=media_type, content_disposition_type="inline")
+    return FileResponse(real_path, media_type=media_type, content_disposition_type="inline")

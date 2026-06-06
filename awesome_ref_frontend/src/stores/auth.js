@@ -14,8 +14,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function tryRestoreSession() {
     try {
-      const res = await fetch('/api/groups', { credentials: 'same-origin' })
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
       if (res.ok) {
+        const data = await res.json()
+        username.value = data.username
         logged.value = true
         return true
       }

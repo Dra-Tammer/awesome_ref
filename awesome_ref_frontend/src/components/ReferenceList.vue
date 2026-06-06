@@ -257,7 +257,10 @@ function onImportJSON() {
           :key="ref.id"
           class="ref-card"
           :class="{ active: refsStore.selectedReference?.id === ref.id }"
+          role="button"
+          tabindex="0"
           @click="onClickRef(ref)"
+          @keydown.enter="onClickRef(ref)"
         >
           <div class="ref-card-main">
             <div class="ref-card-title" v-html="highlightText(ref.title || '无标题', refsStore.searchQuery)"></div>

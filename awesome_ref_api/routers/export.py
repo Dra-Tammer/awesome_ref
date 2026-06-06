@@ -419,9 +419,13 @@ def import_data(data: ImportData, user: User = Depends(get_current_user), db: Se
     existing_refs = {r.ref_key: r for r in db.query(Reference).filter(Reference.user_id == user.id, Reference.deleted_at.is_(None)).all()}
     trashed_refs = {r.ref_key: r for r in db.query(Reference).filter(Reference.user_id == user.id, Reference.deleted_at.isnot(None)).all()}
 
+    import uuid as _uuid
     for item in data.references:
         title = (item.get("title") or "").strip()
         ref_key = _make_ref_key(title)
+        # 处理 key 碰撞
+        if ref_key in existing_refs and existing_refs[ref_key].title.lower().strip() != title.lower().strip():
+            ref_key = ref_key + _uuid.uuid4().hex[:8]
 
         ref = existing_refs.get(ref_key)
         trashed_ref = trashed_refs.get(ref_key) if not ref else None
@@ -442,8 +446,9 @@ def import_data(data: ImportData, user: User = Depends(get_current_user), db: Se
         raw_group_ids = item.get("groupIds", [])
         mapped_ids = [group_key_map.get(gid, gid) for gid in raw_group_ids]
 
-        # Clear existing groups and reassign
-        ref.groups.clear()
+        # 仅在导入数据包含分组信息时才清空现有分组
+        if raw_group_ids:
+            ref.groups.clear()
         if mapped_ids:
             for gid in mapped_ids:
                 g = db.query(Group).filter(Group.user_id == user.id, Group.group_key == gid).first()
@@ -454,15 +459,19 @@ def import_data(data: ImportData, user: User = Depends(get_current_user), db: Se
 
     db.commit()
 
-    # Import notes
+    # Import notes (合并而非覆盖)
     for ref_key, note_data in data.notes.items():
-        content = note_data.get("content", "")
+        content = note_data.get("content", "").strip()
         if not content:
             continue
         now = datetime.now(timezone.utc)
         note = db.query(Note).filter(Note.user_id == user.id, Note.ref_key == ref_key).first()
         if note:
-            note.content = content
+            existing = (note.content or "").strip()
+            if existing and content and existing != content:
+                note.content = existing + "\n\n---\n\n" + content
+            elif not existing:
+                note.content = content
             note.updated_at = now
         else:
             note = Note(user_id=user.id, ref_key=ref_key, content=content, updated_at=now)
@@ -482,18 +491,21 @@ def import_data(data: ImportData, user: User = Depends(get_current_user), db: Se
             db.flush()
 
         tasks_data = plan_data.get("tasks", [])
-        # Clear existing tasks and re-import
-        for t in list(plan.tasks):
-            db.delete(t)
-        db.flush()
+        # 追加新任务而非替换（按标题去重）
+        existing_titles = {t.title for t in plan.tasks}
+        max_order = max((t.sort_order for t in plan.tasks), default=-1)
 
-        for i, td in enumerate(tasks_data):
+        for td in tasks_data:
+            title = td.get("title", "")
+            if title in existing_titles:
+                continue
+            max_order += 1
             task = DailyTask(
                 plan_id=plan.id,
-                title=td.get("title", ""),
+                title=title,
                 status=td.get("status", "pending"),
                 note=td.get("note", ""),
-                sort_order=td.get("sortOrder", i),
+                sort_order=td.get("sortOrder", max_order),
             )
             db.add(task)
 
