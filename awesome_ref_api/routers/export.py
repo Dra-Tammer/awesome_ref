@@ -367,6 +367,10 @@ def _build_zip(user, db, groups, references, notes, daily_plans, exported_at) ->
     }
 
     buf = BytesIO()
+    _note_count = 0
+    _pdf_count = 0
+    _pdf_missing = 0
+    _img_count = 0
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("data.json", json.dumps(data, ensure_ascii=False, indent=2))
 
@@ -377,6 +381,7 @@ def _build_zip(user, db, groups, references, notes, daily_plans, exported_at) ->
             filepath = os.path.join(NOTES_DIR, n.filename)
             if os.path.exists(filepath):
                 zf.write(filepath, f"notes/{n.filename}")
+                _note_count += 1
 
         # Collect PDF files
         for ref in db.query(Reference).filter(Reference.user_id == user.id).all():
@@ -384,6 +389,10 @@ def _build_zip(user, db, groups, references, notes, daily_plans, exported_at) ->
                 pdf_path = os.path.join(PDF_DIR, ref.pdf_filename)
                 if os.path.exists(pdf_path):
                     zf.write(pdf_path, f"pdfs/{ref.pdf_filename}")
+                    _pdf_count += 1
+                else:
+                    _pdf_missing += 1
+                    print(f"[export_zip] PDF文件缺失: {ref.pdf_filename} (路径: {pdf_path})")
 
         # Collect images referenced in standalone notes
         image_pattern = r'/api/standalone-notes/images/([a-f0-9]+\.\w+)'
@@ -404,7 +413,9 @@ def _build_zip(user, db, groups, references, notes, daily_plans, exported_at) ->
                 img_path = os.path.join(IMAGES_DIR, img_name)
                 if os.path.exists(img_path):
                     zf.write(img_path, f"images/{img_name}")
+                    _img_count += 1
 
+    print(f"[export_zip] 完成: 笔记={_note_count}, PDF={_pdf_count}, PDF缺失={_pdf_missing}, 图片={_img_count}")
     buf.seek(0)
     return buf
 
