@@ -82,6 +82,10 @@ def _purge_old_trash(db: Session, user_id: int):
     ).all()
     for ref in old_refs:
         db.query(Note).filter(Note.user_id == user_id, Note.ref_key == ref.ref_key).delete()
+        if ref.pdf_filename:
+            path = _pdf_path(ref.pdf_filename)
+            if os.path.exists(path):
+                os.remove(path)
         db.delete(ref)
     if old_refs:
         db.commit()

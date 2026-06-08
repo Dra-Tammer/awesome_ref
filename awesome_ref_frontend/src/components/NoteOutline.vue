@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useStandaloneNotesStore } from '../stores/standaloneNotes.js'
 
 const standaloneNotesStore = useStandaloneNotesStore()
@@ -40,11 +40,6 @@ watch(() => standaloneNotesStore.selectedNote, (note) => {
   activeId.value = headings.value.length > 0 ? headings.value[0].id : null
 }, { immediate: true })
 
-const visibleHeadings = computed(() => {
-  if (headings.value.length === 0) return []
-  return headings.value
-})
-
 function scrollToHeading(heading) {
   const preview = document.querySelector('.note-editor-preview')
   if (!preview) return
@@ -75,7 +70,7 @@ function scrollToHeading(heading) {
         <p>选择笔记后显示大纲</p>
       </div>
 
-      <div v-else-if="visibleHeadings.length === 0" class="outline-empty">
+      <div v-else-if="headings.length === 0" class="outline-empty">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3">
           <path d="M4 6h16M4 12h10M4 18h8"/>
         </svg>
@@ -84,7 +79,7 @@ function scrollToHeading(heading) {
 
       <nav v-else class="outline-nav">
         <a
-          v-for="(h, idx) in visibleHeadings"
+          v-for="(h, idx) in headings"
           :key="idx"
           class="outline-item"
           :class="{

@@ -1,18 +1,26 @@
+import json
 import os
-import time as _time
+import re
 import uuid
+import zipfile
 from datetime import datetime, timezone
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
-from database import get_db
-from models import Reference, Note, User, Group, DailyPlan, DailyTask
+from database import get_db, utc_isoformat
+from models import Reference, Note, User, Group, DailyPlan, DailyTask, StandaloneNote, NoteTag
 from deps import get_current_user
 from routers.references import _to_dict, _make_ref_key, _apply_fields
+
+PDF_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "pdf_data")
+NOTES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "note_mark_data")
+IMAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "images_data")
+
+MAX_IMPORT_SIZE = 100 * 1024 * 1024  # 100MB
 
 router = APIRouter()
 
@@ -307,6 +315,101 @@ def _build_docx(groups: list[dict], references: list[dict],
 
 
 # ---------------------------------------------------------------------------
+# ZIP backup generator
+# ---------------------------------------------------------------------------
+
+def _build_zip(user, db, groups, references, notes, daily_plans, exported_at) -> BytesIO:
+    # Include trashed references
+    trashed = [
+        _to_dict(r)
+        for r in db.query(Reference)
+                    .options(joinedload(Reference.groups))
+                    .filter(Reference.user_id == user.id,
+                            Reference.deleted_at.isnot(None))
+                    .all()
+    ]
+    all_refs = references + trashed
+
+    # Standalone notes
+    standalone_notes = []
+    sn_rows = db.query(StandaloneNote).filter(StandaloneNote.user_id == user.id).all()
+    for n in sn_rows:
+        if not n.filename:
+            continue
+        filepath = os.path.join(NOTES_DIR, n.filename)
+        content = ""
+        if os.path.exists(filepath):
+            with open(filepath, "r", encoding="utf-8") as f:
+                content = f.read()
+        tags = [{"name": t.name, "color": t.color} for t in n.tags]
+        standalone_notes.append({
+            "title": n.title,
+            "content": content,
+            "pinned": bool(n.pinned),
+            "tags": tags,
+            "createdAt": utc_isoformat(n.created_at),
+            "updatedAt": utc_isoformat(n.updated_at),
+        })
+
+    # Note tags
+    note_tags = [{"name": t.name, "color": t.color}
+                 for t in db.query(NoteTag).filter(NoteTag.user_id == user.id).all()]
+
+    data = {
+        "export_version": "2.0",
+        "exported_at": exported_at,
+        "groups": groups,
+        "references": all_refs,
+        "notes": notes,
+        "standalone_notes": standalone_notes,
+        "note_tags": note_tags,
+        "daily_plans": daily_plans,
+    }
+
+    buf = BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("data.json", json.dumps(data, ensure_ascii=False, indent=2))
+
+        # Collect standalone note .md files
+        for n in sn_rows:
+            if not n.filename:
+                continue
+            filepath = os.path.join(NOTES_DIR, n.filename)
+            if os.path.exists(filepath):
+                zf.write(filepath, f"notes/{n.filename}")
+
+        # Collect PDF files
+        for ref in db.query(Reference).filter(Reference.user_id == user.id).all():
+            if ref.pdf_filename:
+                pdf_path = os.path.join(PDF_DIR, ref.pdf_filename)
+                if os.path.exists(pdf_path):
+                    zf.write(pdf_path, f"pdfs/{ref.pdf_filename}")
+
+        # Collect images referenced in standalone notes
+        image_pattern = r'/api/standalone-notes/images/([a-f0-9]+\.\w+)'
+        seen_images = set()
+        for n in sn_rows:
+            if not n.filename:
+                continue
+            filepath = os.path.join(NOTES_DIR, n.filename)
+            if not os.path.exists(filepath):
+                continue
+            with open(filepath, "r", encoding="utf-8") as f:
+                content = f.read()
+            for match in re.finditer(image_pattern, content):
+                img_name = match.group(1)
+                if img_name in seen_images:
+                    continue
+                seen_images.add(img_name)
+                img_path = os.path.join(IMAGES_DIR, img_name)
+                if os.path.exists(img_path):
+                    zf.write(img_path, f"images/{img_name}")
+
+    buf.seek(0)
+    return buf
+
+
+# ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
@@ -367,13 +470,44 @@ def export_data(
                      f"attachment; filename=awesomeref-export-{exported_at[:10]}.docx"},
         )
 
+    if fmt == "zip":
+        buf = _build_zip(user, db, groups, references, notes, daily_plans, exported_at)
+        return Response(
+            content=buf.getvalue(),
+            media_type="application/zip",
+            headers={"Content-Disposition":
+                     f"attachment; filename=awesomeref-backup-{exported_at[:10]}.zip"},
+        )
+
     # Default: json
+    standalone_notes = []
+    for n in db.query(StandaloneNote).filter(StandaloneNote.user_id == user.id).all():
+        filepath = os.path.join(NOTES_DIR, n.filename) if n.filename else None
+        content = ""
+        if filepath and os.path.exists(filepath):
+            with open(filepath, "r", encoding="utf-8") as f:
+                content = f.read()
+        tags = [{"name": t.name, "color": t.color} for t in n.tags]
+        standalone_notes.append({
+            "title": n.title,
+            "content": content,
+            "pinned": bool(n.pinned),
+            "tags": tags,
+            "createdAt": utc_isoformat(n.created_at),
+            "updatedAt": utc_isoformat(n.updated_at),
+        })
+
+    note_tags = [{"name": t.name, "color": t.color}
+                 for t in db.query(NoteTag).filter(NoteTag.user_id == user.id).all()]
+
     return {
-        "export_version": "1.1",
+        "export_version": "2.0",
         "exported_at": exported_at,
         "groups": groups,
         "references": references,
         "notes": notes,
+        "standalone_notes": standalone_notes,
+        "note_tags": note_tags,
         "daily_plans": daily_plans,
     }
 
@@ -384,16 +518,20 @@ class ImportData(BaseModel):
     groups: list = []
     references: list = []
     notes: dict = {}
+    standalone_notes: list = []
+    note_tags: list = []
     daily_plans: list = []
 
 
-@router.post("/import")
-def import_data(data: ImportData, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Build group name->key mapping from existing groups
-    existing_groups = {g.name: g for g in db.query(Group).filter(Group.user_id == user.id).all()}
-    group_key_map = {}  # old_key -> new_key
+# ---------------------------------------------------------------------------
+# Shared import helpers
+# ---------------------------------------------------------------------------
 
-    for g in data.groups:
+def _import_groups(user_id: int, groups_data: list, db: Session) -> dict:
+    """Import groups, return old_key -> new_key mapping."""
+    existing_groups = {g.name: g for g in db.query(Group).filter(Group.user_id == user_id).all()}
+    group_key_map = {}
+    for g in groups_data:
         name = (g.get("name") or "").strip()
         old_key = g.get("id", "")
         if not name:
@@ -402,30 +540,36 @@ def import_data(data: ImportData, user: User = Depends(get_current_user), db: Se
             group_key_map[old_key] = existing_groups[name].group_key
         else:
             new_key = f"grp-{uuid.uuid4().hex[:12]}"
-            new_group = Group(user_id=user.id, group_key=new_key, name=name)
+            new_group = Group(user_id=user_id, group_key=new_key, name=name)
             db.add(new_group)
             db.flush()
             existing_groups[name] = new_group
             group_key_map[old_key] = new_key
+    return group_key_map
 
-    # Ensure ungrouped exists
-    ungrouped = db.query(Group).filter(Group.user_id == user.id, Group.group_key == "ungrouped").first()
+
+def _ensure_ungrouped(user_id: int, db: Session) -> Group:
+    ungrouped = db.query(Group).filter(Group.user_id == user_id, Group.group_key == "ungrouped").first()
     if not ungrouped:
-        ungrouped = Group(user_id=user.id, group_key="ungrouped", name="未分组")
+        ungrouped = Group(user_id=user_id, group_key="ungrouped", name="未分组")
         db.add(ungrouped)
         db.flush()
+    return ungrouped
 
-    # Import references
-    existing_refs = {r.ref_key: r for r in db.query(Reference).filter(Reference.user_id == user.id, Reference.deleted_at.is_(None)).all()}
-    trashed_refs = {r.ref_key: r for r in db.query(Reference).filter(Reference.user_id == user.id, Reference.deleted_at.isnot(None)).all()}
 
-    import uuid as _uuid
-    for item in data.references:
+def _import_references(user_id: int, refs_data: list, group_key_map: dict, db: Session) -> dict:
+    """Import references, return old_ref_key -> new_ref_key mapping."""
+    existing_refs = {r.ref_key: r for r in db.query(Reference).filter(Reference.user_id == user_id, Reference.deleted_at.is_(None)).all()}
+    trashed_refs = {r.ref_key: r for r in db.query(Reference).filter(Reference.user_id == user_id, Reference.deleted_at.isnot(None)).all()}
+    ungrouped = _ensure_ungrouped(user_id, db)
+    ref_key_map = {}
+
+    for item in refs_data:
+        old_ref_key = item.get("id", "")
         title = (item.get("title") or "").strip()
         ref_key = _make_ref_key(title)
-        # 处理 key 碰撞
         if ref_key in existing_refs and existing_refs[ref_key].title.lower().strip() != title.lower().strip():
-            ref_key = ref_key + _uuid.uuid4().hex[:8]
+            ref_key = ref_key + uuid.uuid4().hex[:8]
 
         ref = existing_refs.get(ref_key)
         trashed_ref = trashed_refs.get(ref_key) if not ref else None
@@ -436,17 +580,224 @@ def import_data(data: ImportData, user: User = Depends(get_current_user), db: Se
             trashed_ref.deleted_at = None
             _apply_fields(trashed_ref, item)
             ref = trashed_ref
+            existing_refs[ref_key] = ref
+        else:
+            ref = Reference(user_id=user_id, ref_key=ref_key)
+            _apply_fields(ref, item)
+            db.add(ref)
+            db.flush()
+            existing_refs[ref_key] = ref
+
+        if old_ref_key:
+            ref_key_map[old_ref_key] = ref_key
+
+        raw_group_ids = item.get("groupIds", [])
+        mapped_ids = [group_key_map.get(gid, gid) for gid in raw_group_ids]
+        if raw_group_ids:
+            ref.groups.clear()
+        if mapped_ids:
+            for gid in mapped_ids:
+                g = db.query(Group).filter(Group.user_id == user_id, Group.group_key == gid).first()
+                if g:
+                    ref.groups.append(g)
+        if not ref.groups:
+            ref.groups.append(ungrouped)
+
+    db.commit()
+    return ref_key_map
+
+
+def _import_notes(user_id: int, notes_data: dict, ref_key_map: dict, db: Session):
+    """Import notes with merge logic (concatenation via separator)."""
+    for old_ref_key, note_data in notes_data.items():
+        content = note_data.get("content", "").strip()
+        if not content:
+            continue
+        ref_key = ref_key_map.get(old_ref_key, old_ref_key)
+        now = datetime.now(timezone.utc)
+        note = db.query(Note).filter(Note.user_id == user_id, Note.ref_key == ref_key).first()
+        if note:
+            existing = (note.content or "").strip()
+            if not existing:
+                note.content = content
+                note.updated_at = now
+            elif existing == content:
+                pass
+            else:
+                note.content = existing + "\n\n---\n\n" + content
+                note.updated_at = now
+        else:
+            note = Note(user_id=user_id, ref_key=ref_key, content=content, updated_at=now)
+            db.add(note)
+    db.commit()
+
+
+def _import_tags(user_id: int, tags_data: list, db: Session) -> dict:
+    """Import note tags, return name -> NoteTag mapping."""
+    existing_tags = {t.name: t for t in db.query(NoteTag).filter(NoteTag.user_id == user_id).all()}
+    tag_map = dict(existing_tags)
+    for tag_data in tags_data:
+        name = (tag_data.get("name") or "").strip()
+        if not name or name in tag_map:
+            continue
+        tag = NoteTag(user_id=user_id, name=name, color=tag_data.get("color", "#409eff"))
+        db.add(tag)
+        db.flush()
+        tag_map[name] = tag
+    db.commit()
+    return tag_map
+
+
+def _import_standalone_notes(user_id: int, sn_data_list: list, tag_map: dict, db: Session,
+                             zip_file: zipfile.ZipFile | None = None):
+    """Import standalone notes. If zip_file provided, tries to read content from it."""
+    existing_sn = {n.title: n for n in db.query(StandaloneNote).filter(StandaloneNote.user_id == user_id).all()}
+    os.makedirs(NOTES_DIR, exist_ok=True)
+
+    for sn_data in sn_data_list:
+        title = (sn_data.get("title") or "").strip()
+        if not title or title in existing_sn:
+            continue
+
+        now = datetime.now(timezone.utc)
+        sn = StandaloneNote(user_id=user_id, title=title, filename="", pinned=1 if sn_data.get("pinned") else 0,
+                            created_at=now, updated_at=now)
+        db.add(sn)
+        db.flush()
+
+        filename = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '', title).strip()
+        filename = re.sub(r'\.{2,}', '', filename)
+        if not filename:
+            filename = "无标题笔记"
+        filename = f"{filename}_{sn.id}.md"
+        sn.filename = filename
+
+        sn_tags = sn_data.get("tags", [])
+        if sn_tags:
+            tag_objs = [tag_map[t["name"]] for t in sn_tags if t.get("name") in tag_map]
+            sn.tags = tag_objs
+
+        note_content = sn_data.get("content", "")
+        filepath = os.path.join(NOTES_DIR, filename)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(note_content)
+
+        existing_sn[title] = sn
+
+    db.commit()
+
+
+def _import_daily_plans(user_id: int, plans_data: list, db: Session):
+    """Import daily plans with task deduplication."""
+    for plan_data in plans_data:
+        date = plan_data.get("date", "").strip()
+        if not date:
+            continue
+        plan = db.query(DailyPlan).filter(DailyPlan.user_id == user_id, DailyPlan.date == date).first()
+        if not plan:
+            plan = DailyPlan(user_id=user_id, date=date)
+            db.add(plan)
+            db.flush()
+
+        tasks_data = plan_data.get("tasks", [])
+        existing_titles = {t.title for t in plan.tasks}
+        max_order = max((t.sort_order for t in plan.tasks), default=-1)
+
+        for td in tasks_data:
+            td_title = td.get("title", "")
+            if td_title in existing_titles:
+                continue
+            max_order += 1
+            task = DailyTask(
+                plan_id=plan.id,
+                title=td_title,
+                status=td.get("status", "pending"),
+                note=td.get("note", ""),
+                sort_order=td.get("sortOrder", max_order),
+            )
+            db.add(task)
+    db.commit()
+
+
+@router.post("/import")
+def import_data(data: ImportData, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    group_key_map = _import_groups(user.id, data.groups, db)
+    ref_key_map = _import_references(user.id, data.references, group_key_map, db)
+    _import_notes(user.id, data.notes, ref_key_map, db)
+    tag_map = _import_tags(user.id, data.note_tags, db)
+    _import_standalone_notes(user.id, data.standalone_notes, tag_map, db)
+    _import_daily_plans(user.id, data.daily_plans, db)
+    return {"success": True}
+
+
+@router.post("/import/zip")
+async def import_zip(file: UploadFile = File(...), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    content = await file.read()
+    if len(content) > MAX_IMPORT_SIZE:
+        return Response(status_code=413, content='{"detail":"文件大小超过 100MB 限制"}', media_type="application/json")
+    buf = BytesIO(content)
+
+    try:
+        zf = zipfile.ZipFile(buf, "r")
+    except zipfile.BadZipFile:
+        return Response(status_code=400, content='{"detail":"无效的 ZIP 文件"}', media_type="application/json")
+
+    if "data.json" not in zf.namelist():
+        zf.close()
+        return Response(status_code=400, content='{"detail":"ZIP 中缺少 data.json"}', media_type="application/json")
+
+    data = json.loads(zf.read("data.json"))
+
+    # --- Import groups ---
+    group_key_map = _import_groups(user.id, data.get("groups", []), db)
+
+    # --- Import references (with PDF restoration from ZIP) ---
+    existing_refs = {r.ref_key: r for r in db.query(Reference).filter(Reference.user_id == user.id, Reference.deleted_at.is_(None)).all()}
+    trashed_refs = {r.ref_key: r for r in db.query(Reference).filter(Reference.user_id == user.id, Reference.deleted_at.isnot(None)).all()}
+    ungrouped = _ensure_ungrouped(user.id, db)
+    ref_key_map = {}
+
+    for item in data.get("references", []):
+        old_ref_key = item.get("id", "")
+        title = (item.get("title") or "").strip()
+        ref_key = _make_ref_key(title)
+        if ref_key in existing_refs and existing_refs[ref_key].title.lower().strip() != title.lower().strip():
+            ref_key = ref_key + uuid.uuid4().hex[:8]
+
+        ref = existing_refs.get(ref_key)
+        trashed_ref = trashed_refs.get(ref_key) if not ref else None
+
+        if ref:
+            _apply_fields(ref, item)
+        elif trashed_ref:
+            trashed_ref.deleted_at = None
+            _apply_fields(trashed_ref, item)
+            ref = trashed_ref
+            existing_refs[ref_key] = ref
         else:
             ref = Reference(user_id=user.id, ref_key=ref_key)
             _apply_fields(ref, item)
             db.add(ref)
             db.flush()
+            existing_refs[ref_key] = ref
 
-        # Assign to groups
+        if old_ref_key:
+            ref_key_map[old_ref_key] = ref_key
+
+        # Restore PDF file from ZIP (sanitized against path traversal)
+        pdf_filename = item.get("pdfFilename")
+        if pdf_filename:
+            pdf_filename = os.path.basename(pdf_filename)
+        if pdf_filename and f"pdfs/{pdf_filename}" in zf.namelist():
+            os.makedirs(PDF_DIR, exist_ok=True)
+            pdf_path = os.path.join(PDF_DIR, pdf_filename)
+            if not os.path.exists(pdf_path):
+                with open(pdf_path, "wb") as f:
+                    f.write(zf.read(f"pdfs/{pdf_filename}"))
+            ref.pdf_filename = pdf_filename
+
         raw_group_ids = item.get("groupIds", [])
         mapped_ids = [group_key_map.get(gid, gid) for gid in raw_group_ids]
-
-        # 仅在导入数据包含分组信息时才清空现有分组
         if raw_group_ids:
             ref.groups.clear()
         if mapped_ids:
@@ -459,55 +810,29 @@ def import_data(data: ImportData, user: User = Depends(get_current_user), db: Se
 
     db.commit()
 
-    # Import notes (合并而非覆盖)
-    for ref_key, note_data in data.notes.items():
-        content = note_data.get("content", "").strip()
-        if not content:
-            continue
-        now = datetime.now(timezone.utc)
-        note = db.query(Note).filter(Note.user_id == user.id, Note.ref_key == ref_key).first()
-        if note:
-            existing = (note.content or "").strip()
-            if existing and content and existing != content:
-                note.content = existing + "\n\n---\n\n" + content
-            elif not existing:
-                note.content = content
-            note.updated_at = now
-        else:
-            note = Note(user_id=user.id, ref_key=ref_key, content=content, updated_at=now)
-            db.add(note)
+    # --- Import notes ---
+    _import_notes(user.id, data.get("notes", {}), ref_key_map, db)
 
-    db.commit()
+    # --- Import tags ---
+    tag_map = _import_tags(user.id, data.get("note_tags", []), db)
 
-    # Import daily plans
-    for plan_data in data.daily_plans:
-        date = plan_data.get("date", "").strip()
-        if not date:
-            continue
-        plan = db.query(DailyPlan).filter(DailyPlan.user_id == user.id, DailyPlan.date == date).first()
-        if not plan:
-            plan = DailyPlan(user_id=user.id, date=date)
-            db.add(plan)
-            db.flush()
+    # --- Import standalone notes ---
+    _import_standalone_notes(user.id, data.get("standalone_notes", []), tag_map, db)
 
-        tasks_data = plan_data.get("tasks", [])
-        # 追加新任务而非替换（按标题去重）
-        existing_titles = {t.title for t in plan.tasks}
-        max_order = max((t.sort_order for t in plan.tasks), default=-1)
-
-        for td in tasks_data:
-            title = td.get("title", "")
-            if title in existing_titles:
+    # --- Restore images from ZIP (sanitized against path traversal) ---
+    os.makedirs(IMAGES_DIR, exist_ok=True)
+    for name in zf.namelist():
+        if name.startswith("images/") and len(name) > 7:
+            img_name = os.path.basename(name[7:])
+            if not img_name:
                 continue
-            max_order += 1
-            task = DailyTask(
-                plan_id=plan.id,
-                title=title,
-                status=td.get("status", "pending"),
-                note=td.get("note", ""),
-                sort_order=td.get("sortOrder", max_order),
-            )
-            db.add(task)
+            img_path = os.path.join(IMAGES_DIR, img_name)
+            if not os.path.exists(img_path):
+                with open(img_path, "wb") as f:
+                    f.write(zf.read(name))
 
-    db.commit()
+    # --- Import daily plans ---
+    _import_daily_plans(user.id, data.get("daily_plans", []), db)
+
+    zf.close()
     return {"success": True}

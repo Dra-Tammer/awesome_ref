@@ -3,6 +3,8 @@ import { ref, watch, onMounted } from 'vue'
 import { useReferencesStore } from '../stores/references.js'
 import { useNotesStore } from '../stores/notes.js'
 import { useStandaloneNotesStore } from '../stores/standaloneNotes.js'
+import { useToastStore } from '../stores/toast.js'
+import { useResizablePanels } from '../composables/useResizablePanels.js'
 import GroupList from '../components/GroupList.vue'
 import ReferenceList from '../components/ReferenceList.vue'
 import ReferenceDetail from '../components/ReferenceDetail.vue'
@@ -11,109 +13,12 @@ import { parseRIS } from '../utils/risParser.js'
 
 const refsStore = useReferencesStore()
 const notesStore = useNotesStore()
+const toastStore = useToastStore()
 
-// Left sidebar (GroupList)
-const leftWidth = ref(240)
-const leftCollapsed = ref(false)
-const leftPrevWidth = ref(240)
-
-// Right sidebar (ReferenceDetail)
-const rightWidth = ref(780)
-const rightCollapsed = ref(false)
-const rightPrevWidth = ref(780)
-
-const resizingLeft = ref(false)
-const resizingRight = ref(false)
-let leftRaf = null
-let rightRaf = null
-
-function onLeftHandleDown(e) {
-  e.preventDefault()
-  if (leftCollapsed.value) {
-    toggleLeftPanel()
-    return
-  }
-  const startX = e.clientX
-  const startW = leftWidth.value
-  let moved = false
-
-  function onMove(ev) {
-    if (!moved && Math.abs(ev.clientX - startX) > 3) moved = true
-    if (!moved) return
-    resizingLeft.value = true
-    if (leftRaf) cancelAnimationFrame(leftRaf)
-    leftRaf = requestAnimationFrame(() => {
-      leftWidth.value = Math.max(180, Math.min(400, startW + ev.clientX - startX))
-    })
-  }
-
-  function onUp() {
-    resizingLeft.value = false
-    if (leftRaf) cancelAnimationFrame(leftRaf)
-    leftRaf = null
-    window.removeEventListener('mousemove', onMove)
-    window.removeEventListener('mouseup', onUp)
-    if (!moved) toggleLeftPanel()
-  }
-
-  window.addEventListener('mousemove', onMove)
-  window.addEventListener('mouseup', onUp)
-}
-
-function onRightHandleDown(e) {
-  e.preventDefault()
-  if (rightCollapsed.value) {
-    toggleRightPanel()
-    return
-  }
-  const startX = e.clientX
-  const startW = rightWidth.value
-  let moved = false
-
-  function onMove(ev) {
-    if (!moved && Math.abs(ev.clientX - startX) > 3) moved = true
-    if (!moved) return
-    resizingRight.value = true
-    if (rightRaf) cancelAnimationFrame(rightRaf)
-    rightRaf = requestAnimationFrame(() => {
-      rightWidth.value = Math.max(320, Math.min(800, startW + startX - ev.clientX))
-    })
-  }
-
-  function onUp() {
-    resizingRight.value = false
-    if (rightRaf) cancelAnimationFrame(rightRaf)
-    rightRaf = null
-    window.removeEventListener('mousemove', onMove)
-    window.removeEventListener('mouseup', onUp)
-    if (!moved) toggleRightPanel()
-  }
-
-  window.addEventListener('mousemove', onMove)
-  window.addEventListener('mouseup', onUp)
-}
-
-function toggleLeftPanel() {
-  if (leftCollapsed.value) {
-    leftCollapsed.value = false
-    leftWidth.value = leftPrevWidth.value
-  } else {
-    leftPrevWidth.value = leftWidth.value
-    leftCollapsed.value = true
-    leftWidth.value = 0
-  }
-}
-
-function toggleRightPanel() {
-  if (rightCollapsed.value) {
-    rightCollapsed.value = false
-    rightWidth.value = rightPrevWidth.value
-  } else {
-    rightPrevWidth.value = rightWidth.value
-    rightCollapsed.value = true
-    rightWidth.value = 0
-  }
-}
+const {
+  leftWidth, leftCollapsed, resizingLeft, onLeftHandleDown, toggleLeftPanel,
+  rightWidth, rightCollapsed, resizingRight, onRightHandleDown, toggleRightPanel,
+} = useResizablePanels({ leftDefault: 240, rightDefault: 780, rightMin: 320 })
 
 // Auto-expand right panel when a reference is selected
 watch(() => refsStore.selectedReference, (ref) => {
@@ -133,7 +38,12 @@ async function handleDropFiles(files) {
     const text = await file.text()
     allRefs.push(...parseRIS(text))
   }
-  if (allRefs.length > 0) await refsStore.addReferences(allRefs)
+  if (allRefs.length > 0) {
+    await refsStore.addReferences(allRefs)
+    toastStore.showToast(`成功导入 ${allRefs.length} 条文献`)
+  } else {
+    toastStore.showToast('未找到可导入的文献数据', 'error')
+  }
 }
 </script>
 

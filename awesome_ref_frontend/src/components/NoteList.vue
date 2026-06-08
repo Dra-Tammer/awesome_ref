@@ -2,6 +2,7 @@
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useStandaloneNotesStore } from '../stores/standaloneNotes.js'
 import { useToastStore } from '../stores/toast.js'
+import { highlightText } from '../utils/highlight.js'
 import ConfirmDialog from './ConfirmDialog.vue'
 
 const standaloneNotesStore = useStandaloneNotesStore()
@@ -86,27 +87,6 @@ const filteredNotes = computed(() => {
 
   return result
 })
-
-// 搜索高亮：返回带 <mark> 的 HTML
-function highlightText(text, query) {
-  if (!query?.trim() || !text) return escapeHtml(text || '')
-  const words = query.trim().toLowerCase().split(/\s+/)
-  let result = escapeHtml(text)
-  for (const word of words) {
-    if (!word) continue
-    const regex = new RegExp(`(${escapeRegex(word)})`, 'gi')
-    result = result.replace(regex, '<mark class="search-highlight">$1</mark>')
-  }
-  return result
-}
-
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
 
 // 内容预览：搜索时展示匹配片段，否则截取开头
 function getContentPreview(content, query) {

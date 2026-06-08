@@ -1,114 +1,17 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useStandaloneNotesStore } from '../stores/standaloneNotes.js'
+import { useResizablePanels } from '../composables/useResizablePanels.js'
 import NoteList from '../components/NoteList.vue'
 import StandaloneNoteEditor from '../components/StandaloneNoteEditor.vue'
 import NoteOutline from '../components/NoteOutline.vue'
 
 const standaloneNotesStore = useStandaloneNotesStore()
 
-// Left sidebar (NoteList)
-const leftWidth = ref(280)
-const leftCollapsed = ref(false)
-const leftPrevWidth = ref(280)
-
-// Right sidebar (NoteOutline)
-const rightWidth = ref(360)
-const rightCollapsed = ref(false)
-const rightPrevWidth = ref(360)
-
-const resizingLeft = ref(false)
-const resizingRight = ref(false)
-let leftRaf = null
-let rightRaf = null
-
-function onLeftHandleDown(e) {
-  e.preventDefault()
-  if (leftCollapsed.value) {
-    toggleLeftPanel()
-    return
-  }
-  const startX = e.clientX
-  const startW = leftWidth.value
-  let moved = false
-
-  function onMove(ev) {
-    if (!moved && Math.abs(ev.clientX - startX) > 3) moved = true
-    if (!moved) return
-    resizingLeft.value = true
-    if (leftRaf) cancelAnimationFrame(leftRaf)
-    leftRaf = requestAnimationFrame(() => {
-      leftWidth.value = Math.max(180, Math.min(400, startW + ev.clientX - startX))
-    })
-  }
-
-  function onUp() {
-    resizingLeft.value = false
-    if (leftRaf) cancelAnimationFrame(leftRaf)
-    leftRaf = null
-    window.removeEventListener('mousemove', onMove)
-    window.removeEventListener('mouseup', onUp)
-    if (!moved) toggleLeftPanel()
-  }
-
-  window.addEventListener('mousemove', onMove)
-  window.addEventListener('mouseup', onUp)
-}
-
-function onRightHandleDown(e) {
-  e.preventDefault()
-  if (rightCollapsed.value) {
-    toggleRightPanel()
-    return
-  }
-  const startX = e.clientX
-  const startW = rightWidth.value
-  let moved = false
-
-  function onMove(ev) {
-    if (!moved && Math.abs(ev.clientX - startX) > 3) moved = true
-    if (!moved) return
-    resizingRight.value = true
-    if (rightRaf) cancelAnimationFrame(rightRaf)
-    rightRaf = requestAnimationFrame(() => {
-      rightWidth.value = Math.max(240, Math.min(800, startW + startX - ev.clientX))
-    })
-  }
-
-  function onUp() {
-    resizingRight.value = false
-    if (rightRaf) cancelAnimationFrame(rightRaf)
-    rightRaf = null
-    window.removeEventListener('mousemove', onMove)
-    window.removeEventListener('mouseup', onUp)
-    if (!moved) toggleRightPanel()
-  }
-
-  window.addEventListener('mousemove', onMove)
-  window.addEventListener('mouseup', onUp)
-}
-
-function toggleLeftPanel() {
-  if (leftCollapsed.value) {
-    leftCollapsed.value = false
-    leftWidth.value = leftPrevWidth.value
-  } else {
-    leftPrevWidth.value = leftWidth.value
-    leftCollapsed.value = true
-    leftWidth.value = 0
-  }
-}
-
-function toggleRightPanel() {
-  if (rightCollapsed.value) {
-    rightCollapsed.value = false
-    rightWidth.value = rightPrevWidth.value
-  } else {
-    rightPrevWidth.value = rightWidth.value
-    rightCollapsed.value = true
-    rightWidth.value = 0
-  }
-}
+const {
+  leftWidth, leftCollapsed, resizingLeft, onLeftHandleDown, toggleLeftPanel,
+  rightWidth, rightCollapsed, resizingRight, onRightHandleDown, toggleRightPanel,
+} = useResizablePanels({ leftDefault: 280, rightDefault: 360, rightMin: 240 })
 
 // Auto-select first note when entering notes view
 watch(() => standaloneNotesStore.notes, (notes) => {

@@ -130,8 +130,10 @@ def search_tasks(
         DailyPlan.user_id == user.id,
     )
     for w in words:
+        # 转义 LIKE 通配符
+        escaped = w.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         query = query.filter(
-            DailyTask.title.ilike(f"%{w}%") | DailyTask.note.ilike(f"%{w}%")
+            DailyTask.title.ilike(f"%{escaped}%") | DailyTask.note.ilike(f"%{escaped}%")
         )
 
     results = []

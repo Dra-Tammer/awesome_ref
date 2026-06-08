@@ -50,7 +50,7 @@ router.beforeEach((to) => {
   const auth = useAuthStore()
   // Only guard logged-in users from visiting login page
   // Auth check for protected routes is handled in App.vue after session restoration
-  if (to.meta.requiresGuest && auth.isLoggedIn) {
+  if (to.meta.requiresGuest && auth.logged) {
     return { name: 'references' }
   }
 })

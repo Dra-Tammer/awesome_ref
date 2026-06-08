@@ -1,4 +1,3 @@
-import time as _time
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel

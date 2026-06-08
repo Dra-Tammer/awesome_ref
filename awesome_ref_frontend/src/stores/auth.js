@@ -1,12 +1,10 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref('')
   const username = ref('')
   const logged = ref(false)
-
-  const isLoggedIn = computed(() => logged.value)
 
   function getHeaders() {
     return token.value ? { Authorization: `Bearer ${token.value}` } : {}
@@ -78,7 +76,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    token, username, isLoggedIn, logged,
+    token, username, logged,
     getHeaders, login, register, logout, changePassword, tryRestoreSession,
   }
 })

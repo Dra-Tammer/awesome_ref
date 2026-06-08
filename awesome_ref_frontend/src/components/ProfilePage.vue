@@ -4,11 +4,18 @@ import { useRouter } from 'vue-router'
 import { useStatsStore } from '../stores/stats.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useToastStore } from '../stores/toast.js'
+import { useReferencesStore } from '../stores/references.js'
+import { useGroupsStore } from '../stores/groups.js'
+import { useNotesStore } from '../stores/notes.js'
+import { importJSONFile } from '../utils/importHelper.js'
 
 const statsStore = useStatsStore()
 const auth = useAuthStore()
 const toastStore = useToastStore()
 const router = useRouter()
+const refsStore = useReferencesStore()
+const groupsStore = useGroupsStore()
+const notesStore = useNotesStore()
 
 onMounted(() => {
   statsStore.loadStats()
@@ -45,6 +52,64 @@ async function onPwdSubmit() {
 }
 
 const showExportModal = ref(false)
+const showImportModal = ref(false)
+
+function refreshAllData() {
+  return Promise.all([refsStore.loadReferences(), groupsStore.loadGroups(), notesStore.loadNotes(), refsStore.loadTrash()])
+}
+
+function onImportZIP() {
+  showImportModal.value = false
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.zip'
+  input.onchange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    try {
+      if (file.size > 100 * 1024 * 1024) {
+        toastStore.showToast('文件大小超过 100MB 限制', 'error')
+        return
+      }
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/import/zip', {
+        method: 'POST',
+        headers: auth.getHeaders(),
+        body: formData,
+      })
+      if (!res.ok) {
+        throw new Error('导入失败')
+      }
+      await refreshAllData()
+      statsStore.loadStats()
+      toastStore.showToast('导入成功')
+    } catch (e) {
+      toastStore.showToast('导入失败: ' + e.message, 'error')
+    }
+  }
+  input.click()
+}
+
+function onImportJSON() {
+  showImportModal.value = false
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json'
+  input.onchange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    try {
+      await importJSONFile(file, auth, toastStore)
+      await refreshAllData()
+      statsStore.loadStats()
+      toastStore.showToast('导入成功')
+    } catch (e) {
+      toastStore.showToast('导入失败: ' + e.message, 'error')
+    }
+  }
+  input.click()
+}
 
 async function doExport(format, ext) {
   showExportModal.value = false
@@ -182,6 +247,12 @@ function authorBarPercent(count) {
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
             导出数据
+          </button>
+          <button class="profile-action-btn" @click="showImportModal = true" title="导入数据">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            导入数据
           </button>
         </div>
       </section>
@@ -532,13 +603,22 @@ function authorBarPercent(count) {
             <button class="pwd-modal-close" @click="showExportModal = false">&times;</button>
           </div>
           <div class="import-modal-body">
+            <button class="import-option" @click="doExport('zip', 'zip')">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <div class="import-option-text">
+                <span class="import-option-title">ZIP 备份</span>
+                <span class="import-option-desc">全量备份，包含文献、笔记、PDF 附件和图片</span>
+              </div>
+            </button>
             <button class="import-option" @click="doExport('json', 'json')">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15v-2h2a1 1 0 1 0 0-2H9"/>
               </svg>
               <div class="import-option-text">
                 <span class="import-option-title">JSON</span>
-                <span class="import-option-desc">导出完整备份，可用于数据恢复或迁移</span>
+                <span class="import-option-desc">仅导出元数据，不含 PDF 和图片文件</span>
               </div>
             </button>
             <button class="import-option" @click="doExport('md', 'md')">
@@ -566,6 +646,40 @@ function authorBarPercent(count) {
               <div class="import-option-text">
                 <span class="import-option-title">Word (DOCX)</span>
                 <span class="import-option-desc">可编辑文档，适合进一步排版和批注</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- 导入格式选择弹框 -->
+  <Teleport to="body">
+    <Transition name="modal">
+      <div v-if="showImportModal" class="pwd-modal-overlay" @click.self="showImportModal = false">
+        <div class="pwd-modal import-modal">
+          <div class="pwd-modal-header">
+            <span>选择导入格式</span>
+            <button class="pwd-modal-close" @click="showImportModal = false">&times;</button>
+          </div>
+          <div class="import-modal-body">
+            <button class="import-option" @click="onImportZIP">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <div class="import-option-text">
+                <span class="import-option-title">ZIP 备份</span>
+                <span class="import-option-desc">导入全量备份，包含文献、笔记、PDF 和图片</span>
+              </div>
+            </button>
+            <button class="import-option" @click="onImportJSON">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15v-2h2a1 1 0 1 0 0-2H9"/>
+              </svg>
+              <div class="import-option-text">
+                <span class="import-option-title">JSON 备份</span>
+                <span class="import-option-desc">导入元数据备份，不含 PDF 和图片文件</span>
               </div>
             </button>
           </div>

@@ -56,7 +56,7 @@ def login(req: LoginRequest, response: Response, request: Request, db: Session =
     if needs_password_upgrade(user.hashed_password):
         user.hashed_password = hash_password(req.password)
         db.commit()
-    token = create_access_token({"sub": user.username})
+    token = create_access_token({"sub": user.username}, user.token_version or 0)
     response.set_cookie(
         key="auth_token",
         value=token,
@@ -86,7 +86,7 @@ def register(req: RegisterRequest, response: Response, request: Request, db: Ses
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户名已存在")
     user = create_user(db, username, password)
-    token = create_access_token({"sub": user.username})
+    token = create_access_token({"sub": user.username}, user.token_version or 0)
     response.set_cookie(
         key="auth_token",
         value=token,
@@ -114,6 +114,7 @@ def change_password(req: ChangePasswordRequest, user=Depends(get_current_user), 
     if req.new_password != req.confirm_password:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="两次新密码输入不一致")
     user.hashed_password = hash_password(req.new_password)
+    user.token_version = (user.token_version or 0) + 1
     db.commit()
     return {"message": "密码修改成功"}
 

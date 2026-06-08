@@ -6,6 +6,7 @@ import { useGroupsStore } from '../stores/groups.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useToastStore } from '../stores/toast.js'
 import { highlightText } from '../utils/highlight.js'
+import { importJSONFile } from '../utils/importHelper.js'
 import ConfirmDialog from './ConfirmDialog.vue'
 import ReferenceEditor from './ReferenceEditor.vue'
 
@@ -128,21 +129,7 @@ function onImportJSON() {
     const file = e.target.files[0]
     if (!file) return
     try {
-      const text = await file.text()
-      const data = JSON.parse(text)
-      if (!data.export_version) {
-        toastStore.showToast('无效的备份文件格式', 'error')
-        return
-      }
-      const res = await fetch('/api/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...auth.getHeaders() },
-        body: JSON.stringify(data),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || '导入失败')
-      }
+      await importJSONFile(file, auth, toastStore)
       await Promise.all([refsStore.loadReferences(), groupsStore.loadGroups(), notesStore.loadNotes(), refsStore.loadTrash()])
       toastStore.showToast('导入成功')
     } catch (e) {

@@ -1,5 +1,5 @@
 <script setup>
-import { watch, onMounted } from 'vue'
+import { watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useReferencesStore } from '../stores/references.js'
@@ -7,6 +7,7 @@ import { useNotesStore } from '../stores/notes.js'
 import { useGroupsStore } from '../stores/groups.js'
 import { useStandaloneNotesStore } from '../stores/standaloneNotes.js'
 import { useDailyTasksStore } from '../stores/dailyTasks.js'
+import { useStatsStore } from '../stores/stats.js'
 import Toolbar from '../components/Toolbar.vue'
 
 const router = useRouter()
@@ -16,6 +17,7 @@ const notesStore = useNotesStore()
 const groupsStore = useGroupsStore()
 const standaloneNotesStore = useStandaloneNotesStore()
 const dailyTasksStore = useDailyTasksStore()
+const statsStore = useStatsStore()
 
 async function loadAllData() {
   await Promise.all([
@@ -36,9 +38,10 @@ function resetAllData() {
   groupsStore.resetGroups()
   standaloneNotesStore.resetNotes()
   dailyTasksStore.resetDailyTasks()
+  statsStore.resetStats()
 }
 
-watch(() => auth.isLoggedIn, async (loggedIn) => {
+watch(() => auth.logged, async (loggedIn) => {
   if (loggedIn) {
     await loadAllData()
   } else {
@@ -47,24 +50,29 @@ watch(() => auth.isLoggedIn, async (loggedIn) => {
   }
 })
 
+function handleKeydown(e) {
+  const tag = document.activeElement?.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+  const list = refsStore.filteredReferences
+  if (!list || list.length === 0) return
+  if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    if (refsStore.selectedIndex > 0) refsStore.selectByIndex(refsStore.selectedIndex - 1)
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    if (refsStore.selectedIndex < list.length - 1) refsStore.selectByIndex(refsStore.selectedIndex + 1)
+  }
+}
+
 onMounted(async () => {
-  if (auth.isLoggedIn) {
+  if (auth.logged) {
     await loadAllData()
   }
+  window.addEventListener('keydown', handleKeydown)
+})
 
-  window.addEventListener('keydown', (e) => {
-    const tag = document.activeElement?.tagName
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-    const list = refsStore.filteredReferences
-    if (!list || list.length === 0) return
-    if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      if (refsStore.selectedIndex > 0) refsStore.selectByIndex(refsStore.selectedIndex - 1)
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      if (refsStore.selectedIndex < list.length - 1) refsStore.selectByIndex(refsStore.selectedIndex + 1)
-    }
-  })
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown)
 })
 
 function handleGlobalNavigate(item) {

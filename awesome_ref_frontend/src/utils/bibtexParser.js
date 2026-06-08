@@ -104,10 +104,3 @@ export function parseBibTeX(text) {
 
   return refs
 }
-
-export function getBibTeXTypeLabel(type) {
-  for (const [bibKey, appType] of Object.entries(BIBTEX_TYPE_MAP)) {
-    if (appType === type) return bibKey
-  }
-  return type
-}

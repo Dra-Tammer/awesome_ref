@@ -243,18 +243,6 @@ async function toggleNoteTag(tagId) {
   await standaloneNotesStore.updateNote(note.id, { tags: newIds })
 }
 
-function patchEditorBg() {
-  setTimeout(() => {
-    document.querySelectorAll('.note-editor-body .md-editor').forEach(el => {
-      el.style.setProperty('background-color', 'transparent', 'important')
-      el.style.setProperty('border', 'none', 'important')
-      el.querySelectorAll('.md-editor-toolbar-wrapper, .md-editor-content, .md-editor-input-wrapper, .cm-editor, .cm-scroller, .cm-content, .cm-gutters').forEach(c => {
-        c.style.setProperty('background-color', 'transparent', 'important')
-      })
-    })
-  }, 50)
-}
-watch(editing, (v) => { if (v) patchEditorBg() })
 </script>
 
 <template>
@@ -350,3 +338,19 @@ watch(editing, (v) => { if (v) patchEditorBg() })
     </Transition>
   </div>
 </template>
+
+<style scoped>
+.note-editor-body :deep(.md-editor),
+.note-editor-body :deep(.md-editor-toolbar-wrapper),
+.note-editor-body :deep(.md-editor-content),
+.note-editor-body :deep(.md-editor-input-wrapper),
+.note-editor-body :deep(.cm-editor),
+.note-editor-body :deep(.cm-scroller),
+.note-editor-body :deep(.cm-content),
+.note-editor-body :deep(.cm-gutters) {
+  background-color: transparent !important;
+}
+.note-editor-body :deep(.md-editor) {
+  border: none !important;
+}
+</style>
